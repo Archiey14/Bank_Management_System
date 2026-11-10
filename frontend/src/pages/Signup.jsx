@@ -44,8 +44,8 @@ export default function Signup() {
     if (!form.name.trim()) return setError('Enter your full name.')
     if (!/^\S+@\S+\.\S+$/.test(form.email)) return setError('Enter a valid work email.')
     if (!form.org.trim()) return setError('Enter your bank or organization.')
-    if (form.password.length < 12 || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password)) {
-      return setError('Password needs 12+ characters with a number and symbol.')
+    if (form.password.length < 6 || !/[A-Za-z]/.test(form.password) || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password)) {
+      return setError('Password needs at least 6 characters with a letter, number, and symbol.')
     }
     if (!agree) return setError('Please accept the Terms of Service and Privacy Policy.')
     setError('')
@@ -113,7 +113,7 @@ export default function Signup() {
             value={form.password}
             onChange={update('password')}
           />
-          <div className="field-hint">Use at least 12 characters with a number and symbol.</div>
+          <div className="field-hint">Use at least 6 characters with a letter, number, and symbol.</div>
           {error && <div className="field-error">{error}</div>}
         </div>
 
