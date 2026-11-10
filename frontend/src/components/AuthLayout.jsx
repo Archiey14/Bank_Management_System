@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './auth.css'
 import { ShieldCheckIcon } from './icons'
 
@@ -11,10 +12,10 @@ export default function AuthLayout({ pill, headline, description, panelCard, chi
       <aside className="auth-brand">
         <div className="auth-brand__dots" aria-hidden="true" />
 
-        <div className="auth-brand__top">
+        <Link to="/" className="auth-brand__top" aria-label="Northbank home">
           <div className="auth-logo">northbank</div>
           <div className="auth-logo__sub">Banking workspace</div>
-        </div>
+        </Link>
 
         <div className="auth-brand__middle">
           <span className="auth-pill">{pill}</span>
