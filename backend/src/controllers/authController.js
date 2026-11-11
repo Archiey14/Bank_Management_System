@@ -1,6 +1,9 @@
+const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
+const logger = require("../utils/logger");
 const { generateToken } = require("../utils/tokenUtils");
+const { sendPasswordResetEmail } = require("../services/emailService");
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -8,6 +11,14 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many authentication requests, please try again later" },
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "test" ? 1000 : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many password reset requests. Please try again later." },
 });
 
 const isStrongPassword = (password) => {
@@ -122,11 +133,118 @@ const logout = async (req, res) => {
   });
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const genericResponse = {
+      success: true,
+      message: "If an account exists with this email, password reset instructions have been sent.",
+    };
+
+    if (!email) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      logger.info("Password reset requested for email");
+      return res.status(200).json(genericResponse);
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    await user.save();
+
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const resetUrl = `${clientUrl.replace(/\/$/, "")}/reset-password/${resetToken}`;
+
+    try {
+      await sendPasswordResetEmail({ to: user.email, resetUrl });
+      logger.info("Reset email successfully submitted to SMTP");
+    } catch (err) {
+      logger.error("Email delivery failure: " + err.message);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send password reset email. Please try again later.",
+      });
+    }
+
+    return res.status(200).json(genericResponse);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: "Password and password confirmation are required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters long and contain at least one letter, one number, and one special symbol",
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      logger.warn("Invalid or expired reset token attempt");
+      return res.status(400).json({ message: "Password reset token is invalid or has expired" });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    logger.success("Password successfully reset");
+
+    return res.status(200).json({
+      success: true,
+      message: "Password has been successfully reset. You can now log in with your new password.",
+      statelessJwtNote: "This system uses stateless JWT authentication. Existing JWT tokens cannot be invalidated without a token revocation blacklist. Clients should discard existing tokens upon password reset.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   authLimiter,
+  passwordResetLimiter,
   register,
   login,
   getMe,
   logout,
+  forgotPassword,
+  resetPassword,
 };
 
