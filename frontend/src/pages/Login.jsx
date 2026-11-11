@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import PasswordField from '../components/PasswordField'
 import { ArrowRightIcon, LockIcon, TrendUpIcon } from '../components/icons'
+import { useAuth } from '../context/AuthContext'
 
 function PanelCard() {
   return (
@@ -34,12 +35,15 @@ function PanelCard() {
 }
 
 export default function Login() {
+  const { login } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       setError('Enter a valid work email.')
@@ -50,8 +54,17 @@ export default function Login() {
       return
     }
     setError('')
-    // TODO: call the backend login endpoint once /api/auth/login exists
-    console.log('login', { email, remember })
+
+    try {
+      setSubmitting(true)
+      await login(email, password)
+      navigate('/dashboard')
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Invalid email or password.'
+      setError(msg)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -105,8 +118,8 @@ export default function Login() {
           </a>
         </div>
 
-        <button type="submit" className="btn-primary">
-          Sign in
+        <button type="submit" className="btn-primary" disabled={submitting}>
+          {submitting ? 'Signing in...' : 'Sign in'}
           <ArrowRightIcon />
         </button>
 

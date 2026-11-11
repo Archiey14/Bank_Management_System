@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import PasswordField from '../components/PasswordField'
 import { ArrowRightIcon, CheckIcon } from '../components/icons'
+import { useAuth } from '../context/AuthContext'
 
 const FEATURES = [
   { title: 'Accounts & transactions', text: 'Keep daily operations connected.' },
@@ -33,13 +34,16 @@ function PanelCard() {
 }
 
 export default function Signup() {
+  const { register } = useAuth()
+  const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', org: '', password: '' })
   const [agree, setAgree] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return setError('Enter your full name.')
     if (!/^\S+@\S+\.\S+$/.test(form.email)) return setError('Enter a valid work email.')
@@ -49,8 +53,17 @@ export default function Signup() {
     }
     if (!agree) return setError('Please accept the Terms of Service and Privacy Policy.')
     setError('')
-    // TODO: call the backend register endpoint once /api/auth/register exists
-    console.log('signup', { name: form.name, email: form.email, org: form.org })
+
+    try {
+      setSubmitting(true)
+      await register(form.name.trim(), form.email.trim(), form.password, form.password)
+      navigate('/dashboard')
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Registration failed. Please try again.'
+      setError(msg)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -131,8 +144,8 @@ export default function Signup() {
           </span>
         </label>
 
-        <button type="submit" className="btn-primary">
-          Create account
+        <button type="submit" className="btn-primary" disabled={submitting}>
+          {submitting ? 'Creating account...' : 'Create account'}
           <ArrowRightIcon />
         </button>
 
