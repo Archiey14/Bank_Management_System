@@ -14,6 +14,8 @@ All routes below need `Authorization: Bearer <token>` (from `/api/auth/login`).
 
 | Method | Path | Who | What |
 | --- | --- | --- | --- |
+| PATCH | `/api/auth/me` | any signed-in user | Update your display name. Body: `{ "name": "Ada Lovelace" }` |
+| PATCH | `/api/auth/password` | any signed-in user | Change your password. Body: `{ "currentPassword": "...", "newPassword": "...", "confirmPassword": "..." }` |
 | GET | `/api/accounts` | any signed-in user | Your accounts |
 | POST | `/api/accounts` | any signed-in user | Open an account. Body: `{ "type": "savings" \| "current" \| "fixed_deposit" }`. Max 5 open accounts. |
 | GET | `/api/accounts/:id` | owner, staff, admin | One account |

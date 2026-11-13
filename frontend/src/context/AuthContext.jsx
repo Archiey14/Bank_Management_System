@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getMe, loginUser, logoutUser, registerUser } from '../services/api'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './authStore'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -56,18 +55,15 @@ export function AuthProvider({ children }) {
     setToken(null)
   }
 
+  const updateUser = (nextUser) => {
+    setUser(nextUser)
+    localStorage.setItem('user', JSON.stringify(nextUser))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 }
 

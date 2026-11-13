@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import PasswordField from '../components/PasswordField'
 import { ArrowRightIcon, CheckIcon } from '../components/icons'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/authStore'
 
 const FEATURES = [
   { title: 'Accounts & transactions', text: 'Keep daily operations connected.' },
@@ -36,7 +36,7 @@ function PanelCard() {
 export default function Signup() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name: '', email: '', org: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [agree, setAgree] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -46,8 +46,7 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return setError('Enter your full name.')
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return setError('Enter a valid work email.')
-    if (!form.org.trim()) return setError('Enter your bank or organization.')
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) return setError('Enter a valid email.')
     if (form.password.length < 6 || !/[A-Za-z]/.test(form.password) || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password)) {
       return setError('Password needs at least 6 characters with a letter, number, and symbol.')
     }
@@ -92,28 +91,15 @@ export default function Signup() {
         </div>
 
         <div className="field">
-          <label htmlFor="email">Work email</label>
+          <label htmlFor="email">Email</label>
           <input
             id="email"
             className="input"
             type="email"
-            placeholder="you@yourbank.com"
+            placeholder="you@example.com"
             autoComplete="email"
             value={form.email}
             onChange={update('email')}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="org">Bank or organization</label>
-          <input
-            id="org"
-            className="input"
-            type="text"
-            placeholder="Enter your organization name"
-            autoComplete="organization"
-            value={form.org}
-            onChange={update('org')}
           />
         </div>
 

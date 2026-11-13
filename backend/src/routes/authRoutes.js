@@ -4,6 +4,8 @@ const {
   register,
   login,
   getMe,
+  updateProfile,
+  changePassword,
   logout,
 } = require("../controllers/authController");
 const authMiddleware = require("../middleware/authMiddleware");
@@ -14,6 +16,8 @@ const router = express.Router();
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
 router.get("/me", authMiddleware, getMe);
+router.patch("/me", authMiddleware, updateProfile);
+router.patch("/password", authMiddleware, authLimiter, changePassword);
 router.post("/logout", logout);
 
 router.get("/admin-only", authMiddleware, authorizeRoles("admin"), (req, res) => {

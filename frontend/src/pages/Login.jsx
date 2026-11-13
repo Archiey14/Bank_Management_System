@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import PasswordField from '../components/PasswordField'
 import { ArrowRightIcon, LockIcon, TrendUpIcon } from '../components/icons'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/authStore'
 
 function PanelCard() {
   return (
