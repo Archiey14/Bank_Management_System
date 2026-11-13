@@ -1,24 +1,19 @@
 const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
 const { generateToken } = require("../utils/tokenUtils");
+const { isStrongPassword, PASSWORD_RULE_MESSAGE } = require("../utils/validators");
+const { recordAudit } = require("../utils/audit");
+const { STAFF_ROLES } = require("../config/constants");
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === "test" ? 1000 : 50,
+  max: 50,
+  // Evaluated per request, so tests can set NODE_ENV after the app is loaded.
+  skip: () => process.env.NODE_ENV === "test",
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many authentication requests, please try again later" },
 });
-
-const isStrongPassword = (password) => {
-  return (
-    typeof password === "string" &&
-    password.length >= 6 &&
-    /[A-Za-z]/.test(password) &&
-    /\d/.test(password) &&
-    /[^A-Za-z0-9]/.test(password)
-  );
-};
 
 const register = async (req, res, next) => {
   try {
@@ -99,6 +94,17 @@ const login = async (req, res, next) => {
     user.lastLogin = new Date();
     await user.save();
 
+    if (STAFF_ROLES.includes(user.role)) {
+      await recordAudit({
+        actor: user,
+        action: "auth.login",
+        targetType: "User",
+        targetId: user._id,
+        summary: `${user.name} signed in`,
+        req,
+      });
+    }
+
     const token = generateToken({ id: user._id, role: user.role });
     return res.status(200).json({
       message: "Login successful",
@@ -122,11 +128,58 @@ const logout = async (req, res) => {
   });
 };
 
+// PATCH /api/auth/me - the signed-in user can change their own display name.
+const updateProfile = async (req, res, next) => {
+  try {
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    if (name.length < 2 || name.length > 80) {
+      return res.status(400).json({ message: "Name must be between 2 and 80 characters" });
+    }
+    req.user.name = name;
+    await req.user.save();
+    return res.status(200).json({ message: "Profile updated", user: req.user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/auth/password - change own password; needs the current one.
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body ?? {};
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: PASSWORD_RULE_MESSAGE });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ message: "New password must be different from the current one" });
+    }
+
+    const matches = await req.user.comparePassword(currentPassword);
+    if (!matches) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    req.user.password = newPassword;
+    await req.user.save();
+    return res.status(200).json({ message: "Password changed" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   authLimiter,
   register,
   login,
   getMe,
+  updateProfile,
+  changePassword,
   logout,
 };
 

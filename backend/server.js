@@ -8,6 +8,10 @@ const logger = require("./src/utils/logger");
 const requestLogger = require("./src/middleware/requestLogger");
 const authRoutes = require("./src/routes/authRoutes");
 const healthRoutes = require("./src/routes/healthRoutes");
+const accountRoutes = require("./src/routes/accountRoutes");
+const transactionRoutes = require("./src/routes/transactionRoutes");
+const transferRoutes = require("./src/routes/transferRoutes");
+const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const errorHandler = require("./src/middleware/errorHandler");
 
 validateEnv();
@@ -42,9 +46,13 @@ app.get("/", (req, res) => {
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/accounts", accountRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/transfers", transferRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 let server;
 let isShuttingDown = false;
 
