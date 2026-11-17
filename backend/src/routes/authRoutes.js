@@ -4,6 +4,7 @@ const {
   passwordResetLimiter,
   register,
   login,
+  verifyLoginOtp,
   getMe,
   updateProfile,
   changePassword,
@@ -18,6 +19,8 @@ const router = express.Router();
 
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
+// Second step of sign-in: exchange the otpToken from /login for a session.
+router.post("/otp/verify", authLimiter, verifyLoginOtp);
 router.get("/me", authMiddleware, getMe);
 router.patch("/me", authMiddleware, updateProfile);
 router.patch("/password", authMiddleware, authLimiter, changePassword);
@@ -34,4 +37,3 @@ router.get("/staff-only", authMiddleware, authorizeRoles("staff", "admin"), (req
 });
 
 module.exports = router;
-

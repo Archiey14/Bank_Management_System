@@ -6,7 +6,7 @@ import {
   ArrowDownIcon,
   ArrowRightIcon,
   ArrowUpIcon,
-  CogIcon,
+  CardIcon,
   ListIcon,
   PlusIcon,
   SwapIcon,
@@ -23,6 +23,46 @@ import {
   maskAccount,
   monthLabel,
 } from '../utils/format'
+// ── Date-range helpers ────────────────────────────────────────────────────────
+
+// Returns today as YYYY-MM-DD in local time.
+const today = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Subtract `months` calendar months from today.
+const monthsAgo = (months) => {
+  const d = new Date()
+  d.setMonth(d.getMonth() - months)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// First day of the current calendar month.
+const startOfMonth = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+// First day of the current calendar year.
+const startOfYear = () => `${new Date().getFullYear()}-01-01`
+
+const PRESETS = [
+  { label: 'This month',    from: () => startOfMonth(),  to: () => today() },
+  { label: 'Last 3 months', from: () => monthsAgo(3),    to: () => today() },
+  { label: 'Last 6 months', from: () => monthsAgo(6),    to: () => today() },
+  { label: 'This year',     from: () => startOfYear(),   to: () => today() },
+]
+
+// Human-readable label for a date range.
+const rangeLabel = (from, to, presetLabel) => {
+  if (presetLabel) return presetLabel
+  const fmt = (s) =>
+    new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${fmt(from)} – ${fmt(to)}`
+}
+
+// ── Greeting ──────────────────────────────────────────────────────────────────
 
 function greeting() {
   const hour = new Date().getHours()
@@ -79,37 +119,127 @@ function Sparkline({ values }) {
 }
 
 const QUICK_ACTIONS = [
-  { to: '/transfers', label: 'Transfer', hint: 'Move money', icon: <SwapIcon /> },
-  { to: '/accounts', label: 'Deposit', hint: 'Add funds', icon: <PlusIcon /> },
-  { to: '/transactions', label: 'Transactions', hint: 'Full ledger', icon: <ListIcon /> },
-  { to: '/settings', label: 'Settings', hint: 'Profile & password', icon: <CogIcon /> },
+  { to: '/transfers',    label: 'Transfer',     hint: 'Move money',       icon: <SwapIcon /> },
+  { to: '/deposits',    label: 'Deposit',       hint: 'Add funds',        icon: <PlusIcon /> },
+  { to: '/cards/debit', label: 'Cards',         hint: 'Debit & credit',   icon: <CardIcon /> },
+  { to: '/transactions',label: 'Transactions',  hint: 'Full ledger',      icon: <ListIcon /> },
 ]
+
+// ── DateRangePicker ───────────────────────────────────────────────────────────
+
+function DateRangePicker({ from, to, activePreset, onPreset, onCustom }) {
+  const [showCustom, setShowCustom] = useState(false)
+  const [localFrom, setLocalFrom] = useState(from)
+  const [localTo, setLocalTo] = useState(to)
+
+  const applyCustom = (e) => {
+    e.preventDefault()
+    if (!localFrom || !localTo) return
+    if (localFrom > localTo) return
+    onCustom(localFrom, localTo)
+    setShowCustom(false)
+  }
+
+  return (
+    <div className="db-range-picker" aria-label="Date range">
+      <div className="db-range-picker__chips">
+        {PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            className={`db-chiptab${activePreset === preset.label ? ' is-active' : ''}`}
+            onClick={() => {
+              onPreset(preset)
+              setShowCustom(false)
+            }}
+          >
+            {preset.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`db-chiptab${!activePreset ? ' is-active' : ''}`}
+          onClick={() => setShowCustom((v) => !v)}
+        >
+          Custom
+        </button>
+      </div>
+
+      {showCustom && (
+        <form className="db-range-picker__custom" onSubmit={applyCustom}>
+          <label>
+            From
+            <input
+              type="date"
+              className="input"
+              value={localFrom}
+              max={localTo || today()}
+              onChange={(e) => setLocalFrom(e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            To
+            <input
+              type="date"
+              className="input"
+              value={localTo}
+              min={localFrom}
+              max={today()}
+              onChange={(e) => setLocalTo(e.target.value)}
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            className="db-btn db-btn--primary"
+            disabled={!localFrom || !localTo || localFrom > localTo}
+          >
+            Apply
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { user } = useAuth()
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [reloadKey, setReloadKey] = useState(0)
+
+  // Active range — default to "This month" preset.
+  const [activePreset, setActivePreset] = useState(PRESETS[0].label)
+  const [rangeFrom, setRangeFrom] = useState(() => PRESETS[0].from())
+  const [rangeTo, setRangeTo] = useState(() => PRESETS[0].to())
 
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError('')
 
-    getDashboardSummary()
-      .then((data) => {
-        if (active) setSummary(data)
-      })
-      .catch((err) => {
-        if (active) setError(err.response?.data?.message || 'Could not load your overview.')
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+    getDashboardSummary({ from: rangeFrom, to: rangeTo })
+      .then((data) => { if (active) setSummary(data) })
+      .catch((err) => { if (active) setError(err.response?.data?.message || 'Could not load your overview.') })
+      .finally(() => { if (active) setLoading(false) })
 
-    return () => {
-      active = false
-    }
-  }, [reloadKey])
+    return () => { active = false }
+  }, [rangeFrom, rangeTo])
+
+  const handlePreset = (preset) => {
+    setActivePreset(preset.label)
+    setRangeFrom(preset.from())
+    setRangeTo(preset.to())
+  }
+
+  const handleCustom = (from, to) => {
+    setActivePreset(null)
+    setRangeFrom(from)
+    setRangeTo(to)
+  }
 
   const accounts = summary?.accounts ?? []
   const recent = summary?.recentTransactions ?? []
@@ -123,67 +253,64 @@ export default function Dashboard() {
   }
 
   const accountsById = new Map(accounts.map((account) => [account._id, account]))
-  const chartMax = Math.max(
-    1,
-    ...cashflow.flatMap((month) => [month.inMinor, month.outMinor])
-  )
+  const chartMax = Math.max(1, ...cashflow.flatMap((m) => [m.inMinor, m.outMinor]))
 
   const role = user?.role || 'customer'
   const firstName = (user?.name || 'there').split(' ')[0]
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
+  const todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
   })
+
+  const periodLabel = rangeLabel(rangeFrom, rangeTo, activePreset)
 
   const stats = [
     { value: formatMinor(totals.balanceMinor), cap: 'Total balance' },
-    { value: formatMinor(totals.moneyInMinor), cap: 'Money in · this month' },
-    { value: formatMinor(totals.moneyOutMinor), cap: 'Money out · this month' },
+    { value: formatMinor(totals.moneyInMinor), cap: `Money in · ${periodLabel}` },
+    { value: formatMinor(totals.moneyOutMinor), cap: `Money out · ${periodLabel}` },
     { value: String(totals.pendingCount), cap: 'Pending payments' },
   ]
 
   const security = [
-    { label: 'Email address', ok: !!user?.isEmailVerified, yes: 'Verified', no: 'Not verified' },
-    { label: 'Account status', ok: user?.isActive !== false, yes: 'Active', no: 'Inactive' },
-    { label: 'Encrypted session', ok: true, yes: 'On', no: 'Off' },
+    { label: 'Email address',       ok: !!user?.isEmailVerified,     yes: 'Verified',  no: 'Not verified' },
+    { label: 'Account status',      ok: user?.isActive !== false,     yes: 'Active',    no: 'Inactive' },
+    { label: 'Encrypted session',   ok: true,                         yes: 'On',        no: 'Off' },
+    { label: 'Email-OTP sign-in',   ok: true,                         yes: 'Active',    no: 'Off' },
   ]
 
   return (
     <AppShell>
       <PageHeader
-        eyebrow={today}
+        eyebrow={todayLabel}
         title={`${greeting()}, ${firstName}`}
-        sub="Here’s a clear view of your accounts and recent activity."
+        sub="Here's a clear view of your accounts and recent activity."
         actions={
           <>
-            <Link to="/transactions" className="db-btn db-btn--outline">
-              View transactions
-            </Link>
+            <Link to="/transactions" className="db-btn db-btn--outline">View transactions</Link>
             <Link to="/transfers" className="db-btn db-btn--primary">
-              New transfer
-              <ArrowRightIcon />
+              New transfer <ArrowRightIcon />
             </Link>
           </>
         }
+      />
+
+      <DateRangePicker
+        from={rangeFrom}
+        to={rangeTo}
+        activePreset={activePreset}
+        onPreset={handlePreset}
+        onCustom={handleCustom}
       />
 
       {loading && <div className="db-loading">Loading your overview…</div>}
 
       {!loading && error && (
         <>
-          <div className="db-alert db-alert--error" role="alert">
-            {error}
-          </div>
+          <div className="db-alert db-alert--error" role="alert">{error}</div>
           <div className="db-form__actions" style={{ marginTop: 16 }}>
             <button
               type="button"
               className="db-btn db-btn--outline"
-              onClick={() => {
-                setLoading(true)
-                setError('')
-                setReloadKey((key) => key + 1)
-              }}
+              onClick={() => { setRangeFrom(rangeFrom); setRangeTo(rangeTo) }}
             >
               Try again
             </button>
@@ -221,9 +348,7 @@ export default function Dashboard() {
                 <p className="db-empty__text">
                   Open your first savings, current or fixed deposit account to start banking.
                 </p>
-                <Link to="/accounts" className="db-btn db-btn--primary">
-                  Open an account
-                </Link>
+                <Link to="/accounts" className="db-btn db-btn--primary">Open an account</Link>
               </div>
             </section>
           ) : (
@@ -235,12 +360,8 @@ export default function Dashboard() {
                     <p className="db-card__sub">Money in vs. money out, last 6 months</p>
                   </div>
                   <div className="db-legend">
-                    <span>
-                      <i className="db-dot db-dot--in" /> In
-                    </span>
-                    <span>
-                      <i className="db-dot db-dot--out" /> Out
-                    </span>
+                    <span><i className="db-dot db-dot--in" /> In</span>
+                    <span><i className="db-dot db-dot--out" /> Out</span>
                   </div>
                 </div>
 
@@ -276,7 +397,6 @@ export default function Dashboard() {
                 {balanceTrend.length > 0 && (
                   <Sparkline values={balanceTrend.map((day) => day.balanceMinor)} />
                 )}
-
                 <div className="db-navy__list">
                   {accounts.map((account) => (
                     <div className="db-navy__acct" key={account._id}>
@@ -301,9 +421,7 @@ export default function Dashboard() {
                   <h2 className="db-card__title">Recent transactions</h2>
                   <p className="db-card__sub">Your latest activity across all accounts</p>
                 </div>
-                <Link to="/transactions" className="db-link">
-                  View all
-                </Link>
+                <Link to="/transactions" className="db-link">View all</Link>
               </div>
 
               {recent.length === 0 ? (
@@ -321,13 +439,9 @@ export default function Dashboard() {
                     const sub = [
                       transaction.counterpartyAccountNumber
                         ? `A/C •••• ${last4(transaction.counterpartyAccountNumber)}`
-                        : account
-                          ? ACCOUNT_TYPE_LABELS[account.type]
-                          : null,
+                        : account ? ACCOUNT_TYPE_LABELS[account.type] : null,
                       formatDate(transaction.createdAt),
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
+                    ].filter(Boolean).join(' · ')
 
                     return (
                       <li className="db-tx__row" key={transaction._id}>
@@ -337,25 +451,18 @@ export default function Dashboard() {
                         <div className="db-tx__main">
                           <div className="db-tx__title">
                             {transaction.description ||
-                              TRANSACTION_TYPE_LABELS[transaction.type] ||
-                              'Transaction'}
+                              TRANSACTION_TYPE_LABELS[transaction.type] || 'Transaction'}
                           </div>
                           <div className="db-tx__sub">{sub}</div>
                         </div>
-                        <span
-                          className={`db-status ${
-                            transaction.status === 'pending'
-                              ? 'is-pending'
-                              : transaction.status === 'failed'
-                                ? 'is-failed'
-                                : 'is-done'
-                          }`}
-                        >
+                        <span className={`db-status ${
+                          transaction.status === 'pending' ? 'is-pending'
+                          : transaction.status === 'failed' ? 'is-failed'
+                          : 'is-done'}`}>
                           {transaction.status}
                         </span>
                         <div className={`db-tx__amt ${credit ? 'is-in' : ''}`}>
-                          {credit ? '+' : '−'}
-                          {formatMinor(Math.abs(transaction.amount))}
+                          {credit ? '+' : '−'}{formatMinor(Math.abs(transaction.amount))}
                         </div>
                       </li>
                     )
@@ -384,20 +491,13 @@ export default function Dashboard() {
               <dl className="db-dl">
                 <div>
                   <dt>Last sign-in</dt>
-                  <dd>
-                    {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Just now'}
-                  </dd>
+                  <dd>{user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Just now'}</dd>
                 </div>
                 <div>
                   <dt>Member since</dt>
-                  <dd>
-                    {user?.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          year: 'numeric',
-                        })
-                      : '—'}
-                  </dd>
+                  <dd>{user?.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    : '—'}</dd>
                 </div>
               </dl>
 
@@ -416,9 +516,7 @@ export default function Dashboard() {
               </ul>
 
               <p className="db-note">
-                <Link to="/settings" className="db-link">
-                  Manage your profile and password →
-                </Link>
+                <Link to="/settings" className="db-link">Manage your profile and password →</Link>
               </p>
             </section>
           </div>

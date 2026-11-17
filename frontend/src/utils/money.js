@@ -8,6 +8,9 @@ const inr = new Intl.NumberFormat('en-IN', {
 // The API sends integer minor units (paise). 25050 -> ₹250.50.
 export const formatMinor = (minor = 0) => inr.format(minor / 100)
 
+// Whole-rupee display for limits: 5000000 -> ₹50,000
+export const formatRupees = (minor = 0) => `₹${(minor / 100).toLocaleString('en-IN')}`
+
 // "250.50" -> 25050. Returns null for empty, zero, negative or badly formed input.
 export const toMinorUnits = (value) => {
   const raw = String(value ?? '').trim().replace(/,/g, '')

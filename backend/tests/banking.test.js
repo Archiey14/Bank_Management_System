@@ -53,8 +53,15 @@ describe("Banking: accounts, deposits, transfers and dashboard", () => {
     return { id: res.data.user._id, token: res.data.token };
   };
 
+  // Staff are exempt from the approved-application requirement. We open all
+  // test accounts via the staff route so the enforcement on POST /api/accounts
+  // doesn't block setup. The underlying account behaviour (deposits, transfers,
+  // etc.) is identical regardless of which path created the account.
   const openAccount = async (who, type) => {
-    const res = await call("POST", "/api/accounts", { token: who.token, body: { type } });
+    const res = await call("POST", "/api/staff/accounts", {
+      token: staff.token,
+      body: { customerId: who.id, type },
+    });
     assert.equal(res.status, 201);
     return res.data.account;
   };
@@ -136,7 +143,16 @@ describe("Banking: accounts, deposits, transfers and dashboard", () => {
     assert.deepEqual(summary.data.recentTransactions, []);
   });
 
-  it("3. A customer can open accounts", async () => {
+  it("3. A customer cannot open an account without an approved application", async () => {
+    const res = await call("POST", "/api/accounts", {
+      token: customerA.token,
+      body: { type: "savings" },
+    });
+    assert.equal(res.status, 403);
+    assert.match(res.data.message, /approved.*application|application.*approved/i);
+  });
+
+  it("3b. A customer can open accounts (opened via staff on their behalf)", async () => {
     a1 = await openAccount(customerA, "savings");
     a2 = await openAccount(customerA, "current");
     b1 = await openAccount(customerB, "savings");
@@ -347,12 +363,13 @@ describe("Banking: accounts, deposits, transfers and dashboard", () => {
   it("15. Customers can have at most 5 open accounts", async () => {
     await openAccount(customerA, "savings");
     await openAccount(customerA, "fixed_deposit");
-    const sixth = await call("POST", "/api/accounts", {
-      token: customerA.token,
-      body: { type: "savings" },
+    // The cap is enforced on the staff route too; use it to verify the limit.
+    const sixth = await call("POST", "/api/staff/accounts", {
+      token: staff.token,
+      body: { customerId: customerA.id, type: "savings" },
     });
     assert.equal(sixth.status, 400);
-    assert.match(sixth.data.message, /at most 5/i);
+    assert.match(sixth.data.message, /maximum.*5|5.*maximum|at most 5/i);
   });
 
   it("16. The transaction list paginates, filters and stays private", async () => {

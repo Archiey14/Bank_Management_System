@@ -18,11 +18,57 @@ const EMPTY_FILTERS = {
   limit: '20',
 }
 
-const TYPE_OPTIONS = ['deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'bill_payment']
+const TYPE_OPTIONS = [
+  'deposit',
+  'withdrawal',
+  'transfer_in',
+  'transfer_out',
+  'bill_payment',
+  'fd_booking',
+  'fd_credit',
+]
 const STATUS_OPTIONS = ['completed', 'pending', 'failed']
 
 const toStartOfDay = (value) => (value ? new Date(`${value}T00:00:00`).toISOString() : undefined)
 const toEndOfDay = (value) => (value ? new Date(`${value}T23:59:59.999`).toISOString() : undefined)
+
+const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+
+const buildStatementCsv = (transactions, accountsById, generatedAt) => {
+  const lines = [
+    csvCell('Northbank — Account Statement'),
+    csvCell(`Generated: ${generatedAt}`),
+    csvCell(''),
+    [
+      'Date',
+      'Description',
+      'Type',
+      'Account',
+      'Amount (INR)',
+      'Balance after (INR)',
+      'Status',
+    ]
+      .map(csvCell)
+      .join(','),
+  ]
+  transactions.forEach((transaction) => {
+    const account = accountsById.get(transaction.account)
+    lines.push(
+      [
+        formatDateTime(transaction.createdAt),
+        transaction.description || TRANSACTION_TYPE_LABELS[transaction.type] || 'Transaction',
+        TRANSACTION_TYPE_LABELS[transaction.type] || transaction.type,
+        account ? maskAccount(account.accountNumber) : '—',
+        (transaction.amount / 100).toFixed(2),
+        (transaction.balanceAfter / 100).toFixed(2),
+        transaction.status,
+      ]
+        .map(csvCell)
+        .join(',')
+    )
+  })
+  return lines.join('\r\n')
+}
 
 export default function Transactions() {
   const [accounts, setAccounts] = useState([])
@@ -32,6 +78,7 @@ export default function Transactions() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedTx, setSelectedTx] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -79,6 +126,9 @@ export default function Transactions() {
   const total = data?.total ?? 0
   const totalPages = Math.max(1, data?.totalPages || 1)
 
+  const visibleCredits = transactions.reduce((sum, t) => (t.amount > 0 ? sum + t.amount : sum), 0)
+  const visibleDebits = transactions.reduce((sum, t) => (t.amount < 0 ? sum - t.amount : sum), 0)
+
   const updateFilter = (key) => (event) => {
     setFilters((current) => ({ ...current, [key]: event.target.value }))
   }
@@ -111,12 +161,60 @@ export default function Transactions() {
     setApplied({ ...applied })
   }
 
+  const [statementBusy, setStatementBusy] = useState(false)
+
+  const handleStatement = async () => {
+    setStatementBusy(true)
+    setError('')
+    try {
+      const baseParams = {
+        limit: 100,
+        accountId: applied.accountId,
+        type: applied.type,
+        status: applied.status,
+        from: toStartOfDay(applied.from),
+        to: toEndOfDay(applied.to),
+      }
+      const first = await listTransactions({ ...baseParams, page: 1 })
+      const pages = Math.min(first.totalPages || 1, 20)
+      const rows = [...first.transactions]
+      for (let nextPage = 2; nextPage <= pages; nextPage += 1) {
+        const result = await listTransactions({ ...baseParams, page: nextPage })
+        rows.push(...result.transactions)
+      }
+
+      const generatedAt = new Date().toLocaleString('en-US')
+      const csv = buildStatementCsv(rows, accountsById, generatedAt)
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `northbank-statement-${new Date().toISOString().slice(0, 10)}.csv`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not generate the statement.')
+    } finally {
+      setStatementBusy(false)
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
         eyebrow="Your ledger"
         title="Transactions"
         sub="Every movement across your accounts, newest first."
+        actions={
+          <button
+            type="button"
+            className="db-btn db-btn--outline"
+            onClick={handleStatement}
+            disabled={statementBusy}
+          >
+            {statementBusy ? 'Preparing…' : 'Statement (CSV)'}
+          </button>
+        }
       />
 
       <section className="db-card" style={{ marginTop: 20 }}>
@@ -254,6 +352,31 @@ export default function Transactions() {
       )}
 
       {!loading && !error && transactions.length > 0 && (
+        <div className="db-stats" style={{ marginTop: 20 }}>
+          <div className="db-stat">
+            <div className="db-stat__num" style={{ color: 'var(--green)' }}>
+              +{formatMinor(visibleCredits)}
+            </div>
+            <div className="db-stat__cap">Money in · visible rows</div>
+          </div>
+          <div className="db-stat">
+            <div className="db-stat__num" style={{ color: 'var(--danger)' }}>
+              −{formatMinor(visibleDebits)}
+            </div>
+            <div className="db-stat__cap">Money out · visible rows</div>
+          </div>
+          <div className="db-stat">
+            <div className="db-stat__num">{total}</div>
+            <div className="db-stat__cap">Transactions match the filters</div>
+          </div>
+          <div className="db-stat">
+            <div className="db-stat__num">{transactions.length}</div>
+            <div className="db-stat__cap">Rows on this page</div>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && transactions.length > 0 && (
         <>
           <div className="db-table-wrap">
             <table className="db-table">
@@ -273,7 +396,12 @@ export default function Transactions() {
                   const account = accountsById.get(transaction.account)
                   const credit = transaction.amount > 0
                   return (
-                    <tr key={transaction._id}>
+                    <tr
+                      key={transaction._id}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setSelectedTx(transaction)}
+                      title="Click to view transaction details"
+                    >
                       <td>{formatDateTime(transaction.createdAt)}</td>
                       <td>
                         <div className="db-table__title">
@@ -330,6 +458,111 @@ export default function Transactions() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Transaction Details Modal */}
+      {selectedTx && (
+        <div className="cookie-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="cookie-modal" style={{ maxWidth: 540 }}>
+            <div className="cookie-modal__head">
+              <div>
+                <h3 className="cookie-modal__title">Transaction Receipt</h3>
+                <p className="cookie-modal__sub">
+                  Immutable record from the Northbank ledger.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="cookie-modal__close"
+                onClick={() => setSelectedTx(null)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <dl className="db-kv">
+              <div>
+                <dt>Transaction ID</dt>
+                <dd style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
+                  {selectedTx._id}
+                </dd>
+              </div>
+              <div>
+                <dt>Timestamp</dt>
+                <dd>{formatDateTime(selectedTx.createdAt)}</dd>
+              </div>
+              <div>
+                <dt>Type</dt>
+                <dd>{TRANSACTION_TYPE_LABELS[selectedTx.type] || selectedTx.type}</dd>
+              </div>
+              <div>
+                <dt>Amount</dt>
+                <dd
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 800,
+                    color: selectedTx.amount > 0 ? 'var(--green)' : 'var(--danger)',
+                  }}
+                >
+                  {selectedTx.amount > 0 ? '+' : '−'}
+                  {formatMinor(Math.abs(selectedTx.amount))}
+                </dd>
+              </div>
+              <div>
+                <dt>Balance After</dt>
+                <dd style={{ fontWeight: 700 }}>{formatMinor(selectedTx.balanceAfter)}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <span className={`pill pill--${selectedTx.status}`}>
+                    {selectedTx.status}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt>Account</dt>
+                <dd>
+                  {accountsById.get(selectedTx.account)
+                    ? maskAccount(accountsById.get(selectedTx.account).accountNumber)
+                    : selectedTx.account}
+                </dd>
+              </div>
+              {selectedTx.counterpartyAccountNumber && (
+                <div>
+                  <dt>Counterparty Account</dt>
+                  <dd style={{ fontFamily: 'monospace' }}>
+                    {maskAccount(selectedTx.counterpartyAccountNumber)}
+                  </dd>
+                </div>
+              )}
+              {selectedTx.transferId && (
+                <div>
+                  <dt>Transfer Reference</dt>
+                  <dd style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                    {selectedTx.transferId}
+                  </dd>
+                </div>
+              )}
+              {selectedTx.description && (
+                <div>
+                  <dt>Description</dt>
+                  <dd>{selectedTx.description}</dd>
+                </div>
+              )}
+            </dl>
+
+            <div className="db-form__actions" style={{ marginTop: 24 }}>
+              <button
+                type="button"
+                className="db-btn db-btn--primary"
+                onClick={() => setSelectedTx(null)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AppShell>
   )

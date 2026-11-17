@@ -7,6 +7,17 @@ const setTransporter = (transporter) => {
   customTransporter = transporter;
 };
 
+// True when real SMTP credentials are configured. When false (and no test
+// transporter has been injected) the login-OTP email is logged instead of sent
+// so the flow still works on a dev machine without an email provider.
+const hasSmtpConfig = () =>
+  Boolean(
+    process.env.EMAIL_USER ||
+      process.env.SMTP_USER ||
+      process.env.EMAIL_PASS ||
+      process.env.SMTP_PASS
+  );
+
 const getTransporter = () => {
   if (customTransporter) {
     return customTransporter;
@@ -82,8 +93,62 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
   return info;
 };
 
+// Email the 6-digit sign-in code for the second step of login. In dev (no SMTP
+// credentials and no injected transporter) the code is logged to the server
+// console instead of being sent, so the OTP flow can be exercised without an
+// email provider.
+const sendLoginOtpEmail = async ({ to, code }) => {
+  if (customTransporter) {
+    return customTransporter.sendMail(buildOtpMailOptions({ to, code }));
+  }
+  if (!hasSmtpConfig()) {
+    logger.info(`Login OTP (dev mode) for ${to}: ${code}`);
+    logger.info("Configure EMAIL_USER / EMAIL_PASS to send real sign-in codes.");
+    return { messageId: "dev-otp-log", devCode: code };
+  }
+  const transporter = getTransporter();
+  return transporter.sendMail(buildOtpMailOptions({ to, code }));
+};
+
+const buildOtpMailOptions = ({ to, code }) => ({
+  from:
+    process.env.EMAIL_FROM ||
+    `"Northbank Security" <${process.env.EMAIL_USER || process.env.SMTP_USER || "noreply@northbank.com"}>`,
+  to,
+  subject: "Your Northbank sign-in code",
+  text: `Your Northbank verification code is ${code}.\n\nUse it to finish signing in. The code expires in 5 minutes and can only be used once.\n\nIf you did not try to sign in, you can ignore this email — your account is safe.`,
+  html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f6f8fa; margin: 0; padding: 24px; color: #24292f; }
+        .container { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #d0d7de; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; }
+        .logo { font-size: 20px; font-weight: 700; color: #0969da; margin-bottom: 24px; display: inline-block; }
+        h2 { margin-top: 0; color: #24292f; font-size: 20px; }
+        .code { font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #0969da; padding: 16px 0; }
+        p { font-size: 14px; line-height: 1.6; color: #57606a; margin: 12px 0; }
+        .footer { font-size: 12px; color: #8c959f; border-top: 1px solid #d0d7de; margin-top: 24px; padding-top: 16px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="logo">Northbank</div>
+        <h2>Your sign-in code</h2>
+        <p>Enter this code to finish signing in. It expires in 5 minutes and works once.</p>
+        <div class="code">${code}</div>
+        <p>If you did not try to sign in, you can ignore this email — your account is safe.</p>
+        <div class="footer">&copy; Northbank Management System. All rights reserved.</div>
+      </div>
+    </body>
+    </html>
+  `,
+});
+
 module.exports = {
   sendPasswordResetEmail,
+  sendLoginOtpEmail,
   setTransporter,
 };
 

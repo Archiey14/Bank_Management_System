@@ -2,30 +2,134 @@
    Northbank dashboard — shares tokens with landing + auth
    ========================================================== */
 .db {
-  --navy: #1f2644;
-  --navy-card: #2a3355;
-  --navy-line: rgba(255, 255, 255, 0.1);
-  --ink: #1c2340;
-  --muted: #6b7288;
-  --soft: #8a90a3;
-  --indigo: #6468cc;
-  --indigo-hover: #5559bf;
-  --link: #4f55c7;
-  --line: #e3e5ec;
-  --field-border: #e3e5ec;
-  --surface: #fcfcfe;
-  --tint: #f3f4fb;
-  --green: #2f9e6b;
-  --green-bg: rgba(47, 158, 107, 0.12);
-  --amber: #b7791f;
-  --amber-bg: rgba(214, 158, 46, 0.16);
+  --navy: #0f172a;
+  --navy-card: #f1f5f9;
+  --navy-line: #e2e8f0;
+  --ink: #0f172a;
+  --muted: #475569;
+  --soft: #64748b;
+  --indigo: #4f46e5;
+  --indigo-hover: #4338ca;
+  --link: #4f46e5;
+  --line: #e2e8f0;
+  --field-border: #cbd5e1;
+  --surface: #ffffff;
+  --tint: #f8fafc;
+  --green: #16a34a;
+  --green-bg: rgba(22, 163, 74, 0.12);
+  --amber: #d97706;
+  --amber-bg: rgba(217, 119, 6, 0.14);
+  --card: #ffffff;
+  --hover: #f1f5f9;
+  --chart-out: #818cf8;
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --danger-line: rgba(220, 38, 38, 0.25);
+  --info-bg: rgba(79, 70, 229, 0.08);
+  --info-line: rgba(79, 70, 229, 0.22);
 
   display: flex;
   min-height: 100vh;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--ink);
-  background: var(--tint);
+  background-color: var(--tint);
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(99, 102, 241, 0.05), transparent 60%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background-attachment: fixed;
   text-align: left;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ---------- Dark theme ---------- */
+[data-theme='dark'] .db {
+  --navy: #0c1020;
+  --navy-card: #141b32;
+  --navy-line: rgba(255, 255, 255, 0.08);
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --soft: #64748b;
+  --indigo: #6366f1;
+  --indigo-hover: #818cf8;
+  --link: #818cf8;
+  --line: #1e2844;
+  --field-border: #253356;
+  --surface: #0b0f1d;
+  --tint: #070a14;
+  --green: #4ade80;
+  --green-bg: rgba(74, 222, 128, 0.14);
+  --amber: #fbbf24;
+  --amber-bg: rgba(251, 191, 36, 0.16);
+  --card: #0f1528;
+  --hover: #161f38;
+  --chart-out: #4338ca;
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.12);
+  --danger-line: rgba(248, 113, 113, 0.28);
+  --info-bg: rgba(99, 102, 241, 0.14);
+  --info-line: rgba(99, 102, 241, 0.32);
+
+  background-color: #070a14;
+  background-image:
+    radial-gradient(ellipse 90% 50% at 50% -10%, rgba(99, 102, 241, 0.16), transparent 70%),
+    radial-gradient(circle at 90% 85%, rgba(59, 130, 246, 0.09), transparent 50%),
+    linear-gradient(180deg, #090d1a 0%, #060812 100%);
+  background-attachment: fixed;
+}
+
+[data-theme='dark'] .db-stats {
+  background: linear-gradient(180deg, rgba(20, 27, 50, 0.85) 0%, rgba(15, 21, 40, 0.95) 100%);
+  border-color: #1e2844;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .db-stat {
+  border-left-color: #1e2844;
+}
+
+[data-theme='dark'] .db-action {
+  background: linear-gradient(180deg, rgba(20, 27, 50, 0.85) 0%, rgba(15, 21, 40, 0.95) 100%);
+  border-color: #1e2844;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .db-action:hover {
+  border-color: #3b4c7a;
+  background: linear-gradient(180deg, rgba(25, 34, 62, 0.9) 0%, rgba(18, 25, 48, 0.95) 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme='dark'] .db-card {
+  background: linear-gradient(180deg, rgba(20, 27, 50, 0.85) 0%, rgba(15, 21, 40, 0.95) 100%);
+  border-color: #1e2844;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .db-navy {
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(99, 102, 241, 0.35), rgba(99, 102, 241, 0) 60%),
+    linear-gradient(180deg, #10162c 0%, #171f3a 100%);
+  border: 1px solid #1e2844;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='dark'] .db-mobilebar {
+  background: #070a13;
+  border-bottom: 1px solid #1a233a;
+}
+
+[data-theme='dark'] .db-mobilenav {
+  background: #0d1222;
+  border-bottom: 1px solid #1a233a;
+}
+
+[data-theme='dark'] .db-chiptab {
+  background: #0d1222;
+  border-color: #1a233a;
+  color: #94a3b8;
 }
 
 .db button {
@@ -44,24 +148,37 @@
   display: flex;
   flex-direction: column;
   padding: 32px 20px 20px;
-  background-color: var(--navy);
+  background-color: #ffffff;
   background-image:
-    linear-gradient(180deg, rgba(25, 31, 60, 0.7) 0%, rgba(25, 31, 60, 0.12) 40%, rgba(25, 31, 60, 0.12) 72%, rgba(25, 31, 60, 0.5) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.9) 40%, rgba(246, 248, 255, 0.92) 80%, rgba(238, 242, 255, 0.98) 100%),
     url('../assets/bank-bg.svg');
   background-size: cover, cover;
   background-position: center, center bottom;
   background-repeat: no-repeat;
-  color: #fff;
-  text-shadow: 0 1px 14px rgba(10, 14, 34, 0.55);
+  border-right: 1px solid var(--line);
+  color: var(--ink);
   box-sizing: border-box;
   overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme='dark'] .db-side {
+  background-color: #0c1020;
+  background-image:
+    linear-gradient(180deg, rgba(12, 16, 32, 0.85) 0%, rgba(12, 16, 32, 0.45) 40%, rgba(12, 16, 32, 0.35) 70%, rgba(10, 14, 28, 0.9) 100%),
+    url('../assets/bank-bg.svg');
+  background-size: cover, cover;
+  background-position: center, center bottom;
+  background-repeat: no-repeat;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
 }
 
 .db-logo {
   display: flex;
   flex-direction: column;
   padding: 0 12px;
-  color: #fff;
+  color: var(--ink);
 }
 .db-logo__name {
   font-size: 24px;
@@ -71,10 +188,10 @@
 .db-logo__sub {
   margin-top: 4px;
   font-size: 9px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--soft);
 }
 
 .db-nav {
@@ -93,7 +210,7 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
   font-size: 13.5px;
   font-weight: 500;
   text-align: left;
@@ -101,14 +218,19 @@
   transition: background 0.15s, color 0.15s;
 }
 .db-nav__item:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: #fff;
+  background: var(--hover);
+  color: var(--ink);
 }
 .db-nav__item.is-active {
-  text-shadow: none;
-  background: var(--navy-card);
-  color: #fff;
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--indigo);
   box-shadow: inset 3px 0 0 var(--indigo);
+  font-weight: 600;
+}
+[data-theme='dark'] .db-nav__item.is-active {
+  background: rgba(99, 102, 241, 0.18);
+  color: #818cf8;
+  box-shadow: inset 3px 0 0 #818cf8;
 }
 .db-nav__item:focus-visible,
 .db-btn:focus-visible,
@@ -117,7 +239,7 @@
 .db-link:focus-visible,
 .db-user__out:focus-visible {
   outline: 0;
-  box-shadow: 0 0 0 3px rgba(100, 104, 204, 0.35);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.35);
 }
 
 .db-user {
@@ -126,7 +248,7 @@
   gap: 12px;
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid var(--navy-line);
+  border-top: 1px solid var(--line);
 }
 .db-avatar {
   flex: 0 0 36px;
@@ -155,6 +277,7 @@
   white-space: nowrap;
   font-size: 13px;
   font-weight: 600;
+  color: var(--ink);
 }
 .db-user__role {
   margin-top: 2px;
@@ -162,7 +285,7 @@
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
 }
 .db-user__out {
   display: grid;
@@ -172,13 +295,21 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .db-user__out:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--hover);
+  color: var(--ink);
+}
+.db-user__out + .db-user__out {
+  margin-left: 2px;
+}
+.db-mobilebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ---------- Main column ---------- */
@@ -256,11 +387,11 @@
 }
 .db-btn--outline {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
 }
 .db-btn--outline:hover {
-  background: #f6f7fb;
+  background: var(--hover);
 }
 
 /* ---------- Stats strip ---------- */
@@ -270,7 +401,7 @@
   margin-top: 32px;
   padding: 24px 8px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--line);
   box-shadow: 0 18px 48px rgba(31, 38, 68, 0.08);
 }
@@ -323,14 +454,14 @@
   padding: 18px 20px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--card);
   text-align: left;
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
 }
 .db-action:hover {
   transform: translateY(-3px);
-  border-color: #d3d6ea;
+  border-color: var(--line);
   box-shadow: 0 14px 34px rgba(31, 38, 68, 0.09);
 }
 .db-icon {
@@ -358,6 +489,76 @@
   color: var(--muted);
 }
 
+/* ---------- Date range picker ---------- */
+.db-range-picker {
+  margin-top: 26px;
+}
+.db-range-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.db-chiptab {
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.db-chiptab:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.db-chiptab.is-active {
+  border-color: var(--indigo);
+  background: var(--indigo);
+  color: #fff;
+}
+.db-tab-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 14px;
+  margin-top: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.db-range-picker__custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+.db-range-picker__custom label {
+  display: grid;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+.db-range-picker__custom .input {
+  height: 40px;
+  font-size: 13px;
+}
+.db-range-picker__custom .db-btn {
+  height: 40px;
+}
+
 /* ---------- Rows & cards ---------- */
 .db-row {
   display: grid;
@@ -372,7 +573,7 @@
   padding: 26px 28px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--card);
 }
 .db-card__head {
   display: flex;
@@ -437,7 +638,7 @@
 }
 .db-dot--out,
 .db-bar--out {
-  background: #c9ccf0;
+  background: var(--chart-out);
 }
 
 .db-chart {

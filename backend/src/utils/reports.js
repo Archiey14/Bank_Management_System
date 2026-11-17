@@ -5,7 +5,7 @@ const { lastDayKeys } = require("./dateRanges");
 const { CURRENCY, TIMEZONE } = require("../config/constants");
 
 // Money-moving ledger rows. `transfer_in` is left out so a transfer counts once.
-const VOLUME_TYPES = ["deposit", "withdrawal", "transfer_out", "bill_payment"];
+const VOLUME_TYPES = ["deposit", "withdrawal", "transfer_out", "bill_payment", "fd_booking", "fd_credit"];
 
 // Bank-wide activity over the last `days` days (shared by staff and admin).
 const buildOverview = async (days) => {

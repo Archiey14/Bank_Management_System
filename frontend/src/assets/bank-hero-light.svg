@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 800" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7f9ff"/>
+      <stop offset="0.55" stop-color="#e6ecff"/>
+      <stop offset="1" stop-color="#d3ddff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.76" cy="0.38" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#dfe6ff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#dfe6ff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="win" width="16" height="20" patternUnits="userSpaceOnUse">
+      <rect x="4" y="5" width="6" height="9" rx="1" fill="#ffffff" opacity="0.6"/>
+    </pattern>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="1600" height="800" fill="url(#sky)"/>
+  <rect width="1600" height="800" fill="url(#glow)"/>
+
+  <!-- Soft clouds -->
+  <g fill="#ffffff" opacity="0.75">
+    <ellipse cx="1180" cy="150" rx="120" ry="26"/>
+    <ellipse cx="1250" cy="132" rx="80" ry="24"/>
+    <ellipse cx="520" cy="210" rx="110" ry="22"/>
+    <ellipse cx="590" cy="194" rx="70" ry="20"/>
+    <ellipse cx="1480" cy="260" rx="90" ry="18"/>
+  </g>
+
+  <!-- Growth line -->
+  <path d="M760 520 C 880 500, 960 420, 1060 360 S 1260 250, 1470 170" fill="none" stroke="#6366f1" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 14"/>
+  <g fill="#6366f1" fill-opacity="0.35">
+    <circle cx="960" cy="424" r="6"/>
+    <circle cx="1160" cy="304" r="6"/>
+    <circle cx="1470" cy="170" r="7"/>
+  </g>
+
+  <!-- Far skyline -->
+  <g fill="#d3dbfa">
+    <rect x="40" y="570" width="90" height="230"/>
+    <rect x="140" y="500" width="70" height="300"/>
+    <rect x="220" y="600" width="110" height="200"/>
+    <rect x="340" y="540" width="80" height="260"/>
+    <rect x="440" y="460" width="100" height="340"/>
+    <rect x="560" y="580" width="90" height="220"/>
+    <rect x="670" y="520" width="70" height="280"/>
+    <rect x="760" y="420" width="110" height="380"/>
+    <rect x="1490" y="490" width="100" height="310"/>
+    <rect x="1560" y="560" width="70" height="240"/>
+  </g>
+
+  <!-- Mid skyline with windows -->
+  <g>
+    <g fill="#bcc8f4">
+      <rect x="0" y="640" width="120" height="160"/>
+      <rect x="130" y="600" width="90" height="200"/>
+      <rect x="240" y="650" width="130" height="150"/>
+      <rect x="390" y="610" width="100" height="190"/>
+      <rect x="520" y="660" width="110" height="140"/>
+      <rect x="650" y="590" width="90" height="210"/>
+      <rect x="880" y="380" width="90" height="420"/>
+      <rect x="1400" y="300" width="72" height="500"/>
+      <rect x="1500" y="520" width="100" height="280"/>
+    </g>
+    <g fill="url(#win)">
+      <rect x="0" y="640" width="120" height="160"/>
+      <rect x="130" y="600" width="90" height="200"/>
+      <rect x="240" y="650" width="130" height="150"/>
+      <rect x="390" y="610" width="100" height="190"/>
+      <rect x="520" y="660" width="110" height="140"/>
+      <rect x="650" y="590" width="90" height="210"/>
+      <rect x="880" y="380" width="90" height="420"/>
+      <rect x="1400" y="300" width="72" height="500"/>
+      <rect x="1500" y="520" width="100" height="280"/>
+    </g>
+    <rect x="1416" y="268" width="40" height="32" fill="#a9b7ee"/>
+    <line x1="1436" y1="268" x2="1436" y2="218" stroke="#a9b7ee" stroke-width="4" stroke-linecap="round"/>
+    <rect x="898" y="360" width="54" height="20" fill="#a9b7ee"/>
+  </g>
+
+  <!-- Bank building -->
+  <g>
+    <!-- steps -->
+    <rect x="1000" y="772" width="360" height="28" fill="#98a8e6"/>
+    <rect x="1016" y="758" width="328" height="14" fill="#a5b4ec"/>
+    <rect x="1032" y="744" width="296" height="14" fill="#b1bff0"/>
+    <!-- body -->
+    <rect x="1044" y="560" width="272" height="184" fill="#c4cffa"/>
+    <!-- columns -->
+    <g fill="#f3f6ff" stroke="#a9b6ee" stroke-width="2">
+      <rect x="1058" y="582" width="28" height="162" rx="3"/>
+      <rect x="1104" y="582" width="28" height="162" rx="3"/>
+      <rect x="1150" y="582" width="28" height="162" rx="3"/>
+      <rect x="1196" y="582" width="28" height="162" rx="3"/>
+      <rect x="1242" y="582" width="28" height="162" rx="3"/>
+      <rect x="1288" y="582" width="28" height="162" rx="3"/>
+    </g>
+    <!-- entablature -->
+    <rect x="1032" y="540" width="296" height="24" fill="#a5b4ec"/>
+    <rect x="1040" y="564" width="280" height="10" fill="#b8c4f3"/>
+    <!-- pediment -->
+    <polygon points="1020,540 1180,458 1340,540" fill="#b3c0f1"/>
+    <polygon points="1054,532 1180,472 1306,532" fill="#dbe2fc"/>
+    <circle cx="1180" cy="512" r="15" fill="#ffffff" opacity="0.9"/>
+    <circle cx="1180" cy="512" r="9" fill="none" stroke="#818cf8" stroke-width="3"/>
+  </g>
+
+  <!-- Gold coins -->
+  <g>
+    <circle cx="1090" cy="330" r="28" fill="url(#gold)" stroke="#f59e0b" stroke-width="3"/>
+    <circle cx="1090" cy="330" r="21" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="2"/>
+    <text x="1090" y="341" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#b45309">₹</text>
+    <circle cx="1290" cy="236" r="20" fill="url(#gold)" stroke="#f59e0b" stroke-width="3"/>
+    <circle cx="1290" cy="236" r="14" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="2"/>
+    <text x="1290" y="245" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#b45309">₹</text>
+  </g>
+
+  <!-- Ground -->
+  <rect x="0" y="788" width="1600" height="12" fill="#b8c4f3"/>
+</svg>

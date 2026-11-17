@@ -67,6 +67,8 @@ const transactionSchema = new mongoose.Schema(
     // should not count as money in/out on their dashboard.
     isInternal: { type: Boolean, default: false },
     idempotencyKey: { type: String },
+    // Transfers: the purpose the customer picked (Rent, Family Support, ...).
+    category: { type: String, trim: true, maxlength: 40 },
     // Bill payments.
     biller: { type: String },
     billReference: { type: String },

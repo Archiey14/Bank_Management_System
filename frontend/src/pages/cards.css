@@ -1,0 +1,455 @@
+/* ==========================================================
+   Cards, payees, deposits — shared styles for the card pages.
+   Tokens come from the .db scope in dashboard.css
+   ========================================================== */
+
+/* ---------- Card graphic ---------- */
+.cc-visual {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  max-width: 440px;
+  min-height: 210px;
+  padding: 22px 24px;
+  border-radius: 18px;
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(13, 28, 66, 0.22);
+}
+.cc-visual::before,
+.cc-visual::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+.cc-visual::before {
+  width: 280px;
+  height: 280px;
+  right: -90px;
+  top: -120px;
+}
+.cc-visual::after {
+  width: 180px;
+  height: 180px;
+  right: 20px;
+  bottom: -110px;
+}
+.cc-visual--credit {
+  background: linear-gradient(135deg, #0f2a5e 0%, #1b4682 58%, #2a6aa6 100%);
+}
+.cc-visual--debit {
+  background: linear-gradient(135deg, #4a1d2a 0%, #7a2e3f 58%, #8f3b4e 100%);
+}
+.cc-visual.is-blocked {
+  filter: grayscale(0.85) brightness(0.9);
+  opacity: 0.85;
+}
+.cc-visual__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+.cc-visual__brand {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+.cc-visual__status {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cc-visual__status--active {
+  background: rgba(70, 200, 130, 0.28);
+}
+.cc-visual__status--blocked {
+  background: rgba(230, 90, 90, 0.4);
+}
+.cc-visual__mid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+}
+.cc-visual__type {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+.cc-visual__chip {
+  width: 36px;
+  height: 27px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #e8c870, #b8923a);
+  opacity: 0.92;
+}
+.cc-visual__num {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+}
+.cc-visual__bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cc-visual__right {
+  text-align: right;
+}
+.cc-visual__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+.cc-visual__value {
+  margin-top: 3px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Card list (debit) ---------- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+.card-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+.card-tile__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-tile__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.card-tile__sub {
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+.card-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+  margin: 0;
+}
+.card-facts dt {
+  font-size: 10.5px;
+  color: var(--soft);
+}
+.card-facts dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.card-tile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.card-tile__actions .db-btn {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+.card-notice {
+  padding: 10px 12px;
+  border: 1px solid var(--danger-line);
+  border-radius: 10px;
+  background: var(--danger-bg);
+  font-size: 12px;
+  color: var(--danger);
+}
+.pill--inactive {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+.pill--blocked {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.db-btn--danger {
+  border-color: var(--danger-line);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ---------- Credit card page ---------- */
+.cc-hero {
+  margin-top: 20px;
+}
+.cc-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+.cc-stat {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+.cc-stat--limit {
+  border-top-color: var(--indigo);
+}
+.cc-stat--owed {
+  border-top-color: var(--amber);
+}
+.cc-stat--avail {
+  border-top-color: var(--green);
+}
+.cc-stat__label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.cc-stat__value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.cc-stat__hint {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--soft);
+}
+.cc-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.cc-picker button {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.cc-picker button.is-active {
+  border-color: var(--indigo);
+  background: var(--info-bg);
+  color: var(--ink);
+}
+.cc-activity-in {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* ---------- Application page ---------- */
+.cc-apply {
+  display: grid;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: 28px;
+  margin-top: 20px;
+  align-items: start;
+}
+.cc-apply__preview-note {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--soft);
+}
+.cc-limit-box {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--hover);
+  font-size: 12px;
+}
+.cc-limit-box div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cc-limit-box span:first-child {
+  color: var(--muted);
+}
+.cc-limit-box span:last-child {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Payees / transfers ---------- */
+.payee-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.payee-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+.payee-chip__info {
+  flex: 1;
+  min-width: 0;
+}
+.payee-chip__name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.payee-chip__acct {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.payee-chip .db-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.limit-meter {
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 4px;
+  background: var(--tint);
+  overflow: hidden;
+}
+.limit-meter__bar {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--indigo);
+}
+.limit-meter__bar.is-high {
+  background: var(--amber);
+}
+.limit-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.limit-row strong {
+  font-size: 18px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.secure-box {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--green-bg);
+  border-radius: 10px;
+  background: var(--green-bg);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--green);
+}
+.secure-box strong {
+  font-size: 12.5px;
+}
+
+/* ---------- Tabs (deposits & withdrawals) ---------- */
+.seg-tabs {
+  display: inline-flex;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.seg-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.seg-tabs button.is-active {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+.overview-balance {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.overview-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.overview-row strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .cc-stats {
+    grid-template-columns: 1fr;
+  }
+  .cc-apply {
+    grid-template-columns: 1fr;
+  }
+  .card-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+}

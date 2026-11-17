@@ -108,4 +108,44 @@ export const ArrowUpIcon = () => (
   </Icon>
 )
 
+export const SunIcon = () => (
+  <Icon size={16}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 3v1.8M12 19.2V21M3 12h1.8M19.2 12H21M5.6 5.6l1.3 1.3M17.1 17.1l1.3 1.3M18.4 5.6l-1.3 1.3M6.9 17.1l-1.3 1.3" />
+  </Icon>
+)
+
+export const MoonIcon = () => (
+  <Icon size={16}>
+    <path d="M20 13.2A8 8 0 019.8 4a8 8 0 1010.2 9.2z" />
+  </Icon>
+)
+
+export const ShieldIcon = () => (
+  <Icon>
+    <path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z" />
+  </Icon>
+)
+
+export const ClockIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Icon>
+)
+
+export const CardIcon = () => (
+  <Icon>
+    <rect x="3" y="5.5" width="18" height="13" rx="2.4" />
+    <path d="M3 10h18M7 15h3" />
+  </Icon>
+)
+
+export const DepositIcon = () => (
+  <Icon>
+    <path d="M12 4v10M8 10l4 4 4-4" />
+    <path d="M4 17v1.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V17" />
+  </Icon>
+)
+
 export { TrendUpIcon, CheckIcon, ArrowRightIcon } from './icons'

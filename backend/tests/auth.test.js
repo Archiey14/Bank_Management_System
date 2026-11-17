@@ -6,6 +6,18 @@ const jwt = require("jsonwebtoken");
 const app = require("../server");
 const connectDB = require("../src/config/db");
 const User = require("../src/models/User");
+const { setTransporter } = require("../src/services/emailService");
+const { loginWithOtp } = require("./helpers/auth");
+
+// Captures every email the app tries to send (login OTP + password reset) so
+// the tests can read the OTP back out and finish the two-step sign-in.
+const sentEmails = [];
+const mockTransporter = {
+  sendMail: async (options) => {
+    sentEmails.push(options);
+    return { messageId: "mock-message-id" };
+  },
+};
 
 describe("Authentication & Authorization Test Suite", () => {
   let server;
@@ -15,6 +27,7 @@ describe("Authentication & Authorization Test Suite", () => {
 
   before(async () => {
     process.env.NODE_ENV = "test";
+    setTransporter(mockTransporter);
     await connectDB();
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, resolve));
@@ -125,8 +138,8 @@ describe("Authentication & Authorization Test Suite", () => {
     assert.ok(user.password.startsWith("$2a$") || user.password.startsWith("$2b$"));
   });
 
-  it("7. Successful login", async () => {
-    const res = await fetch(`${baseUrl}/api/auth/login`, {
+  it("7. Successful login (password + emailed OTP)", async () => {
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -134,11 +147,22 @@ describe("Authentication & Authorization Test Suite", () => {
         password: "Password123!",
       }),
     });
+    const loginData = await loginRes.json();
+    assert.equal(loginRes.status, 200);
+    // Step 1 returns an OTP token, never a session token.
+    assert.equal(loginData.otpRequired, true);
+    assert.ok(loginData.otpToken);
+    assert.equal(loginData.token, undefined);
 
-    const data = await res.json();
-    assert.equal(res.status, 200);
-    assert.ok(data.token);
-    assert.equal(data.user.email, `customer1${testEmailDomain}`);
+    // Step 2: read the code from the captured email and verify it.
+    const { token, user } = await loginWithOtp(
+      baseUrl,
+      `customer1${testEmailDomain}`,
+      "Password123!",
+      sentEmails
+    );
+    assert.ok(token);
+    assert.equal(user.email, `customer1${testEmailDomain}`);
   });
 
   it("8. Incorrect password", async () => {
@@ -195,15 +219,12 @@ describe("Authentication & Authorization Test Suite", () => {
   });
 
   it("11. Successful authenticated /me request", async () => {
-    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: `customer1${testEmailDomain}`,
-        password: "Password123!",
-      }),
-    });
-    const { token } = await loginRes.json();
+    const { token } = await loginWithOtp(
+      baseUrl,
+      `customer1${testEmailDomain}`,
+      "Password123!",
+      sentEmails
+    );
 
     const meRes = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -271,15 +292,12 @@ describe("Authentication & Authorization Test Suite", () => {
   });
 
   it("16. Customer cannot access admin-only routes", async () => {
-    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: `customer1${testEmailDomain}`,
-        password: "Password123!",
-      }),
-    });
-    const { token } = await loginRes.json();
+    const { token } = await loginWithOtp(
+      baseUrl,
+      `customer1${testEmailDomain}`,
+      "Password123!",
+      sentEmails
+    );
 
     const res = await fetch(`${baseUrl}/api/auth/admin-only`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -365,19 +383,15 @@ describe("Authentication & Authorization Test Suite", () => {
     const registerData = await registerRes.json();
     assert.equal(registerData.user.password, undefined);
 
-    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: `clean${testEmailDomain}`,
-        password: "Password123!",
-      }),
-    });
-    const loginData = await loginRes.json();
-    assert.equal(loginData.user.password, undefined);
+    const { token } = await loginWithOtp(
+      baseUrl,
+      `clean${testEmailDomain}`,
+      "Password123!",
+      sentEmails
+    );
 
     const meRes = await fetch(`${baseUrl}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${loginData.token}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
     const meData = await meRes.json();
     assert.equal(meData.user.password, undefined);

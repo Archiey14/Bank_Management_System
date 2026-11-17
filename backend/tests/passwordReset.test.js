@@ -7,6 +7,7 @@ const app = require("../server");
 const connectDB = require("../src/config/db");
 const User = require("../src/models/User");
 const { setTransporter } = require("../src/services/emailService");
+const { loginWithOtp } = require("./helpers/auth");
 
 describe("Password Reset & Email Delivery Suite", () => {
   let server;
@@ -287,32 +288,25 @@ describe("Password Reset & Email Delivery Suite", () => {
     });
     assert.equal(oldLoginRes.status, 401);
 
-    const newLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: registeredEmail,
-        password: newPassword,
-      }),
-    });
-    const newLoginData = await newLoginRes.json();
-    assert.equal(newLoginRes.status, 200);
-    assert.ok(newLoginData.token);
-    assert.equal(newLoginData.user.email, registeredEmail);
-    assert.equal(newLoginData.user.resetPasswordToken, undefined);
-    assert.equal(newLoginData.user.resetPasswordExpires, undefined);
+    const { token, user } = await loginWithOtp(
+      baseUrl,
+      registeredEmail,
+      newPassword,
+      sentEmails
+    );
+    assert.ok(token);
+    assert.equal(user.email, registeredEmail);
+    assert.equal(user.resetPasswordToken, undefined);
+    assert.equal(user.resetPasswordExpires, undefined);
   });
 
   it("13. Reset token fields are never returned in user API responses", async () => {
-    const meRes = await fetch(`${baseUrl}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: registeredEmail,
-        password: newPassword,
-      }),
-    });
-    const { token } = await meRes.json();
+    const { token } = await loginWithOtp(
+      baseUrl,
+      registeredEmail,
+      newPassword,
+      sentEmails
+    );
 
     const profileRes = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },

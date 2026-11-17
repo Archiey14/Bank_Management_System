@@ -21,6 +21,12 @@ const accountSchema = new mongoose.Schema(
       unique: true,
       immutable: true,
     },
+    nickname: {
+      type: String,
+      trim: true,
+      maxlength: [50, "Nickname cannot exceed 50 characters"],
+      default: "",
+    },
     currency: {
       type: String,
       default: CURRENCY,

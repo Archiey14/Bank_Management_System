@@ -12,7 +12,12 @@ const {
   clampInt,
   parseDateParam,
 } = require("../utils/validators");
-const { TRANSACTION_TYPES, TRANSACTION_STATUSES } = require("../config/constants");
+const { assertWithinTransferLimit } = require("../utils/limits");
+const {
+  TRANSACTION_TYPES,
+  TRANSACTION_STATUSES,
+  TRANSFER_CATEGORIES,
+} = require("../config/constants");
 
 const ACCOUNT_NUMBER_PATTERN = /^\d{12}$/;
 
@@ -84,6 +89,14 @@ const createTransfer = asyncHandler(async (req, res) => {
   const description = cleanDescription(body.description, "Transfer");
   const idempotencyKey = readIdempotencyKey(req);
 
+  let category;
+  if (body.category !== undefined && body.category !== "") {
+    if (!TRANSFER_CATEGORIES.includes(body.category)) {
+      throw new AppError(`category must be one of: ${TRANSFER_CATEGORIES.join(", ")}`, 400);
+    }
+    category = body.category;
+  }
+
   if (!isObjectIdString(body.fromAccountId)) {
     throw new AppError("fromAccountId is required", 400);
   }
@@ -124,6 +137,8 @@ const createTransfer = asyncHandler(async (req, res) => {
 
   const transferId = crypto.randomUUID();
   const isInternal = to.user.equals(from.user);
+  // Moves between your own accounts don't count toward the daily limit.
+  if (!isInternal) await assertWithinTransferLimit(req.user._id, amountMinor);
   let outLeg;
   let debitedAccount;
 
@@ -163,6 +178,7 @@ const createTransfer = asyncHandler(async (req, res) => {
             transferId,
             counterpartyAccountNumber: to.accountNumber,
             isInternal,
+            category,
             idempotencyKey: idempotencyKey || undefined,
           },
           {
@@ -176,6 +192,7 @@ const createTransfer = asyncHandler(async (req, res) => {
             transferId,
             counterpartyAccountNumber: from.accountNumber,
             isInternal,
+            category,
           },
         ],
         { session, ordered: true }

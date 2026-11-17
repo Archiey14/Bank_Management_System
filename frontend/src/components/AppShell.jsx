@@ -1,29 +1,53 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/authStore'
+import { useTheme } from '../hooks/useTheme'
 import {
-  ChartIcon,
+  CardIcon,
+  ClockIcon,
   CogIcon,
+  DepositIcon,
+  FileIcon,
   GridIcon,
   ListIcon,
   LogoutIcon,
+  MoonIcon,
+  SunIcon,
   SwapIcon,
   UsersIcon,
   WalletIcon,
 } from './appIcons'
+import { ShieldCheckIcon } from './icons'
+import BrandLogo from './BrandLogo'
 import '../pages/dashboard.css'
 import '../pages/banking.css'
+import '../pages/cards.css'
 
-const MAIN_NAV = [
-  { to: '/dashboard', label: 'Overview', icon: <GridIcon /> },
-  { to: '/accounts', label: 'Accounts', icon: <WalletIcon /> },
-  { to: '/transactions', label: 'Transactions', icon: <ListIcon /> },
-  { to: '/transfers', label: 'Transfers', icon: <SwapIcon /> },
+const CUSTOMER_NAV = [
+  { to: '/dashboard', label: 'Dashboard Overview', icon: <GridIcon /> },
+  { to: '/accounts', label: 'My Bank Accounts', icon: <WalletIcon /> },
+  { to: '/cards/debit', label: 'Debit Cards', icon: <CardIcon /> },
+  { to: '/cards/credit', label: 'Credit Cards', icon: <CardIcon />, end: true },
+  { to: '/cards/credit/apply', label: 'Credit Card Application', icon: <FileIcon /> },
+  { to: '/transfers', label: 'Send Money & Payees', icon: <SwapIcon /> },
+  { to: '/deposits', label: 'Deposits & Withdrawals', icon: <DepositIcon /> },
+  { to: '/fixed-deposits', label: 'Fixed Term Deposits', icon: <ClockIcon /> },
+  { to: '/transactions', label: 'Ledger & Statements', icon: <ListIcon /> },
 ]
 
 const STAFF_NAV = [
-  { key: 'customers', label: 'Customers', icon: <UsersIcon /> },
-  { key: 'reports', label: 'Reports', icon: <ChartIcon /> },
+  { to: '/staff', label: 'Operations desk', icon: <UsersIcon />, end: true },
+  { to: '/accounts', label: 'Accounts directory', icon: <WalletIcon /> },
+  { to: '/transactions', label: 'Transactions ledger', icon: <ListIcon /> },
+  { to: '/staff/card-desk', label: 'Card desk', icon: <CardIcon /> },
+]
+
+const ADMIN_NAV = [
+  { to: '/admin', label: 'Admin portal', icon: <ShieldCheckIcon /> },
+  { to: '/staff', label: 'Staff desk', icon: <UsersIcon />, end: true },
+  { to: '/accounts', label: 'Accounts directory', icon: <WalletIcon /> },
+  { to: '/transactions', label: 'Audit & Ledger', icon: <ListIcon /> },
+  { to: '/staff/card-desk', label: 'Card desk', icon: <CardIcon /> },
 ]
 
 const initials = (name = '') =>
@@ -51,9 +75,13 @@ export default function AppShell({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [toast, setToast] = useState('')
+  const { theme, toggleTheme } = useTheme()
 
   const role = user?.role || 'customer'
-  const isStaff = role === 'staff' || role === 'admin'
+
+  const navItems = role === 'admin' ? ADMIN_NAV : role === 'staff' ? STAFF_NAV : CUSTOMER_NAV
+
+  const homeLink = role === 'admin' ? '/admin' : role === 'staff' ? '/staff' : '/dashboard'
 
   useEffect(() => {
     if (!toast) return undefined
@@ -69,54 +97,58 @@ export default function AppShell({ children }) {
     }
   }
 
-  const showPhaseTwo = (label) => setToast(`${label} arrives with the staff module.`)
-
   return (
     <div className="db">
       <aside className="db-side">
-        <Link to="/dashboard" className="db-logo" aria-label="Northbank home">
-          <span className="db-logo__name">northbank</span>
-          <span className="db-logo__sub">Banking workspace</span>
-        </Link>
+        <BrandLogo
+          to={homeLink}
+          size={40}
+          variant="side"
+          subtitle={role === 'admin' ? 'Admin Portal' : role === 'staff' ? 'Staff Desk' : 'Digital Banking'}
+        />
 
-        <nav className="db-nav" aria-label="Main">
-          {MAIN_NAV.map((item) => (
+        <nav className="db-nav" aria-label="Main navigation">
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) => `db-nav__item${isActive ? ' is-active' : ''}`}
             >
               {item.icon}
               <span>{item.label}</span>
             </NavLink>
           ))}
-          {isStaff &&
-            STAFF_NAV.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="db-nav__item"
-                onClick={() => showPhaseTwo(item.label)}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
           <NavLink
             to="/settings"
             className={({ isActive }) => `db-nav__item${isActive ? ' is-active' : ''}`}
           >
             <CogIcon />
-            <span>Settings</span>
+            <span>Profile &amp; Settings</span>
           </NavLink>
         </nav>
 
         <div className="db-user">
-          <span className="db-avatar">{initials(user?.name)}</span>
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user.name} className="db-avatar" style={{ objectFit: 'cover' }} />
+          ) : (
+            <span className="db-avatar">{initials(user?.name)}</span>
+          )}
           <div className="db-user__info">
             <div className="db-user__name">{user?.name || 'Northbank user'}</div>
-            <div className="db-user__role">{role}</div>
+            <div className="db-user__role" style={{ textTransform: 'capitalize' }}>
+              {role}
+            </div>
           </div>
+          <button
+            type="button"
+            className="db-user__out"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
           <button
             type="button"
             className="db-user__out"
@@ -131,35 +163,33 @@ export default function AppShell({ children }) {
 
       <div className="db-main">
         <div className="db-mobilebar">
-          <Link to="/dashboard" className="db-mobilebar__logo">
-            northbank
-          </Link>
-          <button type="button" className="db-btn db-btn--outline" onClick={handleLogout}>
-            Sign out
-          </button>
+          <BrandLogo to={homeLink} size={30} tagline={false} variant="hero" className="db-mobilebar__logo" />
+          <div className="db-mobilebar__actions">
+            <button
+              type="button"
+              className="db-btn db-btn--outline"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+            <button type="button" className="db-btn db-btn--outline" onClick={handleLogout}>
+              Sign out
+            </button>
+          </div>
         </div>
 
         <div className="db-mobilenav" role="tablist" aria-label="Sections">
-          {MAIN_NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) => `db-chiptab${isActive ? ' is-active' : ''}`}
             >
               {item.label}
             </NavLink>
           ))}
-          {isStaff &&
-            STAFF_NAV.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="db-chiptab"
-                onClick={() => showPhaseTwo(item.label)}
-              >
-                {item.label}
-              </button>
-            ))}
           <NavLink
             to="/settings"
             className={({ isActive }) => `db-chiptab${isActive ? ' is-active' : ''}`}

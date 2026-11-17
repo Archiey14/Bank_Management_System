@@ -11,6 +11,7 @@
   --link: #4f55c7;
   --field-border: #e3e5ec;
   --surface: #fcfcfe;
+  --auth-zone: 120px; /* clean strip at the bottom of the brand panel for the footer text */
 
   display: flex;
   height: 100vh;
@@ -68,7 +69,7 @@
 }
 
 a.auth-brand__top {
-  display: block;
+  display: inline-flex;
   align-self: flex-start;
   color: inherit;
   text-decoration: none;
@@ -275,6 +276,7 @@ a.auth-brand__top {
 
 .auth-form-side__top {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
   font-size: 11.5px;
@@ -590,6 +592,9 @@ body:has(.auth) {
 }
 
 @media (max-height: 740px) {
+  .auth {
+    --auth-zone: 76px;
+  }
   .auth-secure,
   .auth-brand__top .auth-logo__sub {
     display: none;
@@ -640,6 +645,145 @@ body:has(.auth) {
   .auth-form-side__top {
     display: none;
   }
+}
+
+/* ---------- Two-step code step ---------- */
+.input--code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 18px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.input--code::placeholder {
+  letter-spacing: 0.3em;
+}
+.auth-linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--link);
+  cursor: pointer;
+}
+.auth-linkbtn:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Light theme: brand panel matches the landing hero ---------- */
+html:not([data-theme='dark']) .auth {
+  --navy-card: #ffffff;
+  --navy-line: #e2e8f0;
+}
+html:not([data-theme='dark']) .auth-brand {
+  background-color: #e8edff;
+  background-image:
+    linear-gradient(to top, #d9e2ff 0, #d9e2ff var(--auth-zone), rgba(217, 226, 255, 0) var(--auth-zone)),
+    url('../assets/bank-panel-light.svg'),
+    linear-gradient(180deg, #f8faff 0%, #e8edff 100%);
+  background-size: 100% 100%, auto 200px, 100% 100%;
+  background-position: 0 0, 85% calc(100% - var(--auth-zone)), 0 0;
+  background-repeat: no-repeat;
+  color: #0f172a;
+  text-shadow: none;
+  border-right: 1px solid #e2e8f0;
+}
+html:not([data-theme='dark']) .auth-brand .nb-brand--hero {
+  color: #0f172a;
+}
+html:not([data-theme='dark']) .auth-brand .nb-brand__sub {
+  color: #64748b;
+  opacity: 1;
+}
+html:not([data-theme='dark']) .auth-pill {
+  background: #e0e7fe;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+}
+html:not([data-theme='dark']) .auth-headline {
+  color: #0f172a;
+}
+html:not([data-theme='dark']) .auth-description {
+  color: #475569;
+}
+html:not([data-theme='dark']) .auth-panel-card {
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+html:not([data-theme='dark']) .panel-card__title,
+html:not([data-theme='dark']) .panel-list__title {
+  color: #0f172a;
+}
+html:not([data-theme='dark']) .panel-card__sub,
+html:not([data-theme='dark']) .panel-stats__label,
+html:not([data-theme='dark']) .panel-stats__cap,
+html:not([data-theme='dark']) .panel-list__text {
+  color: #64748b;
+}
+html:not([data-theme='dark']) .panel-badge {
+  background: #e0e7fe;
+  color: #4338ca;
+}
+html:not([data-theme='dark']) .panel-list__check {
+  background: #e0e7fe;
+  color: #4338ca;
+}
+html:not([data-theme='dark']) .auth-secure__icon {
+  color: #4f46e5;
+}
+html:not([data-theme='dark']) .auth-secure__text {
+  color: #475569;
+}
+html:not([data-theme='dark']) .auth-brand__footer {
+  color: #334155;
+}
+
+/* ---------- Dark theme ---------- */
+[data-theme='dark'] .auth {
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --soft: #64748b;
+  --indigo: #6366f1;
+  --indigo-hover: #818cf8;
+  --link: #818cf8;
+  --field-border: #1a233a;
+  --surface: #070a13;
+}
+[data-theme='dark'] .auth-brand {
+  background-color: #0a0f1f;
+  background-image:
+    linear-gradient(to top, #0e1430 0, #0e1430 var(--auth-zone), rgba(14, 20, 48, 0) var(--auth-zone)),
+    url('../assets/bank-panel-dark.svg'),
+    linear-gradient(180deg, #0a0f1f 0%, #111936 100%);
+  background-size: 100% 100%, auto 200px, 100% 100%;
+  background-position: 0 0, 85% calc(100% - var(--auth-zone)), 0 0;
+  background-repeat: no-repeat;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme='dark'] .auth-form-side {
+  background-color: #070a14;
+  background-image:
+    radial-gradient(ellipse 90% 50% at 85% 15%, rgba(99, 102, 241, 0.14), transparent 60%),
+    linear-gradient(180deg, #090d1a 0%, #060812 100%);
+}
+[data-theme='dark'] .auth .input,
+[data-theme='dark'] .auth .btn-outline {
+  background: #0d1222;
+  border-color: #1a233a;
+  color: #f8fafc;
+}
+[data-theme='dark'] .auth .input::placeholder {
+  color: #64748b;
+}
+[data-theme='dark'] .auth .btn-outline:hover {
+  background: #141b2e;
+  border-color: #2b3a60;
+}
+[data-theme='dark'] .auth-form-side__footer {
+  border-top-color: #1a233a;
 }
 
 /* ---------- Responsive ---------- */

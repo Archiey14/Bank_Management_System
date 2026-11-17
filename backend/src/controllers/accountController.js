@@ -1,11 +1,14 @@
 const mongoose = require("mongoose");
 const Account = require("../models/Account");
+const AccountApplication = require("../models/AccountApplication");
 const Transaction = require("../models/Transaction");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
 const { parseAmountMinor } = require("../utils/money");
+const { recordAudit } = require("../utils/audit");
 const { readIdempotencyKey, findPriorEntry } = require("../utils/idempotency");
 const { isObjectIdString, cleanDescription } = require("../utils/validators");
+const { assertWithinWithdrawalLimit, assertWithinDepositMax } = require("../utils/limits");
 const {
   ACCOUNT_TYPES,
   MAX_ACCOUNTS_PER_USER,
@@ -31,9 +34,26 @@ const listAccounts = asyncHandler(async (req, res) => {
 });
 
 const openAccount = asyncHandler(async (req, res) => {
-  const { type } = req.body ?? {};
+  const { type, nickname } = req.body ?? {};
   if (!ACCOUNT_TYPES.includes(type)) {
     throw new AppError(`Account type must be one of: ${ACCOUNT_TYPES.join(", ")}`, 400);
+  }
+
+  // Customers must have an approved application before they can open an
+  // account directly. Staff and admins are exempt (they open accounts on
+  // behalf of customers via the approval flow or counter operations).
+  if (!isStaff(req.user)) {
+    const approved = await AccountApplication.findOne({
+      user: req.user._id,
+      status: "approved",
+    });
+    if (!approved) {
+      throw new AppError(
+        "You must have an approved account application before opening an account. " +
+          "Please submit an application and wait for staff approval.",
+        403
+      );
+    }
   }
 
   const openCount = await Account.countDocuments({
@@ -44,12 +64,15 @@ const openAccount = asyncHandler(async (req, res) => {
     throw new AppError(`You can have at most ${MAX_ACCOUNTS_PER_USER} open accounts`, 400);
   }
 
+  const cleanNickname = typeof nickname === "string" ? nickname.trim().slice(0, 50) : "";
+
   // Account numbers are random, so retry in the rare case of a collision.
   for (let attempt = 1; attempt <= 5; attempt += 1) {
     try {
       const account = await Account.create({
         user: req.user._id,
         type,
+        nickname: cleanNickname,
         accountNumber: Account.generateAccountNumber(),
       });
       return res.status(201).json({ message: "Account opened", account });
@@ -102,6 +125,12 @@ const postEntry = (kind) =>
 
     const prior = await findPriorEntry(req.user._id, idempotencyKey);
     if (prior) return replay(prior);
+
+    // Self-service limits apply to customers; staff counter operations are exempt.
+    if (!isStaff(req.user)) {
+      if (kind === "deposit") assertWithinDepositMax(amountMinor);
+      else await assertWithinWithdrawalLimit(req.user._id, amountMinor);
+    }
 
     const delta = kind === "deposit" ? amountMinor : -amountMinor;
     let entry;
@@ -163,10 +192,68 @@ const postEntry = (kind) =>
     });
   });
 
+// PATCH /api/accounts/:id/status - staff/admin freeze or unfreeze an account.
+const setAccountStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body ?? {};
+  if (!["active", "frozen"].includes(status)) {
+    throw new AppError('status must be "active" or "frozen"', 400);
+  }
+  const account = await findAccountFor(req.params.id, req.user);
+
+  const previous = account.status;
+  if (previous === status) {
+    return res.status(200).json({ message: `Account is already ${status}`, account });
+  }
+  account.status = status;
+  await account.save();
+
+  await recordAudit({
+    actor: req.user,
+    action: status === "frozen" ? "account.freeze" : "account.unfreeze",
+    targetType: "Account",
+    targetId: account._id,
+    summary: `${status === "frozen" ? "Froze" : "Unfroze"} account ${account.accountNumber}`,
+    req,
+  });
+
+  res.status(200).json({
+    message: status === "frozen" ? "Account frozen" : "Account unfrozen",
+    account,
+  });
+});
+
+// PATCH /api/accounts/:id - update account nickname (and status if staff/admin).
+const updateAccount = asyncHandler(async (req, res) => {
+  const account = await findAccountFor(req.params.id, req.user);
+  const { nickname, status } = req.body ?? {};
+
+  if (nickname !== undefined) {
+    if (typeof nickname !== "string") {
+      throw new AppError("Nickname must be a string", 400);
+    }
+    account.nickname = nickname.trim().slice(0, 50);
+  }
+
+  if (status !== undefined) {
+    if (!isStaff(req.user)) {
+      throw new AppError("Only staff can change account status", 403);
+    }
+    if (!["active", "frozen"].includes(status)) {
+      throw new AppError('status must be "active" or "frozen"', 400);
+    }
+    account.status = status;
+  }
+
+  await account.save();
+  res.status(200).json({ message: "Account updated", account });
+});
+
 module.exports = {
   listAccounts,
   openAccount,
   getAccount,
+  updateAccount,
   deposit: postEntry("deposit"),
   withdraw: postEntry("withdrawal"),
+  setAccountStatus,
 };

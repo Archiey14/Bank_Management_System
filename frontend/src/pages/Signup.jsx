@@ -6,16 +6,16 @@ import { ArrowRightIcon, CheckIcon } from '../components/icons'
 import { useAuth } from '../context/authStore'
 
 const FEATURES = [
-  { title: 'Accounts & transactions', text: 'Keep daily operations connected.' },
-  { title: 'Customers & compliance', text: 'Bring service and reviews together.' },
-  { title: 'Insights & reporting', text: 'Turn banking activity into clarity.' },
+  { title: 'Personal accounts', text: 'Open savings and current accounts in minutes.' },
+  { title: 'Instant transfers', text: 'Send and receive money seamlessly across accounts.' },
+  { title: 'High-yield deposits', text: 'Grow your savings with flexible fixed deposits.' },
 ]
 
 function PanelCard() {
   return (
     <>
-      <div className="panel-card__title">One workspace. Every team.</div>
-      <div className="panel-card__sub">Make room for better ways of working.</div>
+      <div className="panel-card__title">Simple, transparent banking.</div>
+      <div className="panel-card__sub">Built for how you manage your money today.</div>
       <ul className="panel-list">
         {FEATURES.map((f) => (
           <li key={f.title}>
@@ -46,7 +46,7 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return setError('Enter your full name.')
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return setError('Enter a valid email.')
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) return setError('Enter a valid email address.')
     if (form.password.length < 6 || !/[A-Za-z]/.test(form.password) || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password)) {
       return setError('Password needs at least 6 characters with a letter, number, and symbol.')
     }
@@ -67,14 +67,14 @@ export default function Signup() {
 
   return (
     <AuthLayout
-      pill="Built for your team"
-      headline={['Better banking.', 'Built together.']}
-      description="Give your team one place to manage accounts, serve customers, and keep banking moving."
+      pill="Personal digital banking"
+      headline={['Better banking.', 'Built for you.']}
+      description="Enjoy fast transfers, clear account overviews, and modern banking from any device."
       panelCard={<PanelCard />}
     >
-      <div className="auth-eyebrow">Northbank workspace</div>
+      <div className="auth-eyebrow">Northbank Digital Banking</div>
       <h2 className="auth-title">Create your account</h2>
-      <p className="auth-subtitle">Set up your access to a more connected bank.</p>
+      <p className="auth-subtitle">Join Northbank and experience modern, connected banking.</p>
 
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <div className="field">
@@ -91,7 +91,7 @@ export default function Signup() {
         </div>
 
         <div className="field">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="email">Email address</label>
           <input
             id="email"
             className="input"
@@ -120,13 +120,13 @@ export default function Signup() {
           <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
           <span>
             I agree to the{' '}
-            <a href="#terms" className="auth-link">
+            <Link to="/terms" className="auth-link">
               Terms of Service
-            </a>{' '}
+            </Link>{' '}
             and{' '}
-            <a href="#privacy" className="auth-link">
+            <Link to="/privacy" className="auth-link">
               Privacy Policy
-            </a>
+            </Link>
           </span>
         </label>
 
@@ -134,8 +134,6 @@ export default function Signup() {
           {submitting ? 'Creating account...' : 'Create account'}
           <ArrowRightIcon />
         </button>
-
-        <p className="auth-note">Your administrator may need to approve workspace access.</p>
 
         <p className="auth-switch">
           Already have an account?

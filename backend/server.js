@@ -12,6 +12,13 @@ const accountRoutes = require("./src/routes/accountRoutes");
 const transactionRoutes = require("./src/routes/transactionRoutes");
 const transferRoutes = require("./src/routes/transferRoutes");
 const dashboardRoutes = require("./src/routes/dashboardRoutes");
+const applicationRoutes = require("./src/routes/applicationRoutes");
+const beneficiaryRoutes = require("./src/routes/beneficiaryRoutes");
+const fixedDepositRoutes = require("./src/routes/fixedDepositRoutes");
+const staffRoutes = require("./src/routes/staffRoutes");
+const adminRoutes = require("./src/routes/adminRoutes");
+const cardRoutes = require("./src/routes/cardRoutes");
+const limitRoutes = require("./src/routes/limitRoutes");
 const errorHandler = require("./src/middleware/errorHandler");
 
 validateEnv();
@@ -50,6 +57,13 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/transfers", transferRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/beneficiaries", beneficiaryRoutes);
+app.use("/api/fixed-deposits", fixedDepositRoutes);
+app.use("/api/staff", staffRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/cards", cardRoutes);
+app.use("/api/limits", limitRoutes);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5001;

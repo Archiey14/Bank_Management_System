@@ -2,11 +2,26 @@ const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
 const logger = require("../utils/logger");
-const { generateToken } = require("../utils/tokenUtils");
+const { generateToken, verifyToken } = require("../utils/tokenUtils");
 const { isStrongPassword, PASSWORD_RULE_MESSAGE } = require("../utils/validators");
 const { recordAudit } = require("../utils/audit");
 const { STAFF_ROLES } = require("../config/constants");
-const { sendPasswordResetEmail } = require("../services/emailService");
+const { sendPasswordResetEmail, sendLoginOtpEmail } = require("../services/emailService");
+const {
+  OTP_LOGIN_PURPOSE,
+  OTP_TTL_MS,
+  MAX_OTP_FAILURES,
+  OTP_LOCK_MS,
+  generateOtpCode,
+  hashOtp,
+  verifyOtp,
+} = require("../utils/otp");
+
+// Short-lived token handed out after the password step; it can only be
+// exchanged at POST /api/auth/otp/verify.
+const OTP_LOGIN_WINDOW = "10m";
+const OTP_LOCKED_MESSAGE =
+  "Too many incorrect codes. Please wait 15 minutes and try again.";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -27,6 +42,31 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Too many password reset requests. Please try again later." },
 });
+
+// Records the sign-in and hands out the session token. Runs once the emailed
+// one-time code has been verified at /api/auth/otp/verify.
+const completeLogin = async (user, req, res) => {
+  user.lastLogin = new Date();
+  await user.save();
+
+  if (STAFF_ROLES.includes(user.role)) {
+    await recordAudit({
+      actor: user,
+      action: "auth.login",
+      targetType: "User",
+      targetId: user._id,
+      summary: `${user.name} signed in`,
+      req,
+    });
+  }
+
+  const token = generateToken({ id: user._id, role: user.role });
+  return res.status(200).json({
+    message: "Login successful",
+    user,
+    token,
+  });
+};
 
 const register = async (req, res, next) => {
   try {
@@ -80,6 +120,9 @@ const register = async (req, res, next) => {
   }
 };
 
+// POST /api/auth/login - verifies the password, then emails a one-time code.
+// The session token is NOT issued here; the client exchanges the returned
+// otpToken at /api/auth/otp/verify once the code arrives.
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -104,26 +147,92 @@ const login = async (req, res, next) => {
       return res.status(403).json({ message: "Account is inactive. Please contact support." });
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    // Password was right. Issue a one-time code and email it; it becomes the
+    // mandatory second step of sign-in.
+    const code = generateOtpCode();
+    user.loginOtpHash = hashOtp(code);
+    user.loginOtpExpires = new Date(Date.now() + OTP_TTL_MS);
+    user.loginOtpAttempts = 0;
+    user.loginOtpLockUntil = null;
 
-    if (STAFF_ROLES.includes(user.role)) {
-      await recordAudit({
-        actor: user,
-        action: "auth.login",
-        targetType: "User",
-        targetId: user._id,
-        summary: `${user.name} signed in`,
-        req,
+    try {
+      await sendLoginOtpEmail({ to: user.email, code });
+    } catch (err) {
+      logger.error("Login OTP email delivery failure: " + err.message);
+      user.loginOtpHash = null;
+      user.loginOtpExpires = null;
+      await user.save();
+      return res.status(500).json({
+        message: "Could not send your sign-in code. Please try again later.",
       });
     }
 
-    const token = generateToken({ id: user._id, role: user.role });
+    await user.save();
+
+    const otpToken = generateToken(
+      { id: user._id, purpose: OTP_LOGIN_PURPOSE },
+      { expiresIn: OTP_LOGIN_WINDOW }
+    );
     return res.status(200).json({
-      message: "Login successful",
-      user,
-      token,
+      message: "A verification code was sent to your email",
+      otpRequired: true,
+      otpToken,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/auth/otp/verify - second step of sign-in. Checks the emailed code
+// (or rejects it), then issues the real session token.
+const verifyLoginOtp = async (req, res, next) => {
+  try {
+    const { otpToken, code } = req.body ?? {};
+    if (!otpToken || !code) {
+      return res.status(400).json({ message: "Verification code is required" });
+    }
+
+    let decoded;
+    try {
+      decoded = verifyToken(otpToken);
+    } catch {
+      return res
+        .status(401)
+        .json({ message: "Your sign-in session expired. Please sign in again." });
+    }
+    if (decoded.purpose !== OTP_LOGIN_PURPOSE) {
+      return res.status(401).json({ message: "Invalid sign-in session. Please sign in again." });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: "Invalid sign-in session. Please sign in again." });
+    }
+
+    if (user.loginOtpLockUntil && user.loginOtpLockUntil > new Date()) {
+      return res.status(429).json({ message: OTP_LOCKED_MESSAGE });
+    }
+    if (!user.loginOtpHash || !user.loginOtpExpires || user.loginOtpExpires < new Date()) {
+      return res.status(401).json({ message: "Your code expired. Please sign in again." });
+    }
+
+    if (!verifyOtp(user.loginOtpHash, code)) {
+      user.loginOtpAttempts = (user.loginOtpAttempts || 0) + 1;
+      if (user.loginOtpAttempts >= MAX_OTP_FAILURES) {
+        user.loginOtpAttempts = 0;
+        user.loginOtpLockUntil = new Date(Date.now() + OTP_LOCK_MS);
+      }
+      await user.save();
+      return res.status(401).json({ message: "Invalid verification code" });
+    }
+
+    // Success: the code is one-shot, so clear it before handing out the token.
+    user.loginOtpHash = null;
+    user.loginOtpExpires = null;
+    user.loginOtpAttempts = 0;
+    user.loginOtpLockUntil = null;
+
+    return completeLogin(user, req, res);
   } catch (error) {
     next(error);
   }
@@ -141,14 +250,35 @@ const logout = async (req, res) => {
   });
 };
 
-// PATCH /api/auth/me - the signed-in user can change their own display name.
+// PATCH /api/auth/me - the signed-in user can change their profile details (name, phone, avatar).
 const updateProfile = async (req, res, next) => {
   try {
-    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-    if (name.length < 2 || name.length > 80) {
-      return res.status(400).json({ message: "Name must be between 2 and 80 characters" });
+    const { name, phone, avatar } = req.body ?? {};
+
+    if (name !== undefined) {
+      const trimmedName = typeof name === "string" ? name.trim() : "";
+      if (trimmedName.length < 2 || trimmedName.length > 80) {
+        return res.status(400).json({ message: "Name must be between 2 and 80 characters" });
+      }
+      req.user.name = trimmedName;
     }
-    req.user.name = name;
+
+    if (phone !== undefined) {
+      const trimmedPhone = typeof phone === "string" ? phone.trim() : "";
+      if (trimmedPhone && !/^[0-9+() -]{7,20}$/.test(trimmedPhone)) {
+        return res.status(400).json({ message: "Please provide a valid phone number" });
+      }
+      req.user.phone = trimmedPhone;
+    }
+
+    if (avatar !== undefined) {
+      const trimmedAvatar = typeof avatar === "string" ? avatar.trim() : "";
+      if (trimmedAvatar.length > 500) {
+        return res.status(400).json({ message: "Avatar reference is too long" });
+      }
+      req.user.avatar = trimmedAvatar;
+    }
+
     await req.user.save();
     return res.status(200).json({ message: "Profile updated", user: req.user });
   } catch (error) {
@@ -295,6 +425,7 @@ module.exports = {
   passwordResetLimiter,
   register,
   login,
+  verifyLoginOtp,
   getMe,
   updateProfile,
   changePassword,
@@ -302,4 +433,3 @@ module.exports = {
   forgotPassword,
   resetPassword,
 };
-

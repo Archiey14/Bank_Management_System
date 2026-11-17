@@ -8,20 +8,73 @@ const CASHFLOW_MONTHS = 6;
 const TREND_DAYS = 7;
 const RECENT_COUNT = 6;
 
-// GET /api/dashboard/summary - everything the customer overview needs in one
-// call. All money values are integer minor units.
+// Parse an optional YYYY-MM-DD query param. Returns a Date (UTC midnight) or null.
+const parseDate = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return null;
+  const d = new Date(`${value.trim()}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+// GET /api/dashboard/summary?from=YYYY-MM-DD&to=YYYY-MM-DD
+//
+// `from` and `to` are optional.  When omitted the totals window defaults to
+// the current calendar month.  The cashflow chart (last 6 months) and balance
+// trend (last 7 days) are always fixed windows regardless of the range.
 const getSummary = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
+  // ── Totals date window ────────────────────────────────────────────────────
+  const fromParam = parseDate(req.query.from);
+  const toParam   = parseDate(req.query.to);
+
+  // Default: first millisecond of the current calendar month → now.
+  const monthKeys = lastMonthKeys(CASHFLOW_MONTHS);
+  const currentMonthKey = monthKeys[monthKeys.length - 1];
+  const [cmYear, cmMonth] = currentMonthKey.split("-").map(Number);
+  const defaultFrom = new Date(Date.UTC(cmYear, cmMonth - 1, 1));
+  const defaultTo   = new Date();
+
+  const totalsFrom = fromParam ?? defaultFrom;
+  // `to` is inclusive: extend to the last millisecond of that day.
+  const totalsTo = toParam
+    ? new Date(toParam.getTime() + 24 * 60 * 60 * 1000 - 1)
+    : defaultTo;
+
+  if (totalsFrom > totalsTo) {
+    return res.status(400).json({ message: '"from" must be before "to"' });
+  }
+
+  // ── Accounts ──────────────────────────────────────────────────────────────
   const accounts = await Account.find({ user: userId, status: { $ne: "closed" } }).sort({
     createdAt: 1,
   });
-  const accountIds = accounts.map((account) => account._id);
-  const totalBalanceMinor = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const accountIds = accounts.map((a) => a._id);
+  const totalBalanceMinor = accounts.reduce((sum, a) => sum + a.balance, 0);
 
-  // Money in / out per month. Transfers between a customer's own accounts are
-  // excluded because they don't change how much money the customer has.
-  const monthKeys = lastMonthKeys(CASHFLOW_MONTHS);
+  // ── Totals for the requested window ───────────────────────────────────────
+  // Transfers between the customer's own accounts are excluded: they don't
+  // change the customer's total wealth.
+  const totalsRows = await Transaction.aggregate([
+    {
+      $match: {
+        user: userId,
+        status: "completed",
+        isInternal: { $ne: true },
+        createdAt: { $gte: totalsFrom, $lte: totalsTo },
+      },
+    },
+    {
+      $group: {
+        _id: { $cond: [{ $gt: ["$amount", 0] }, "in", "out"] },
+        total: { $sum: "$amount" },
+      },
+    },
+  ]);
+  const totalsMap = new Map(totalsRows.map((row) => [row._id, row.total]));
+  const moneyInMinor  = totalsMap.get("in")  || 0;
+  const moneyOutMinor = Math.abs(totalsMap.get("out") || 0);
+
+  // ── Cashflow chart (fixed: last 6 calendar months) ────────────────────────
   const cashflowRows = await Transaction.aggregate([
     {
       $match: {
@@ -47,13 +100,11 @@ const getSummary = asyncHandler(async (req, res) => {
   );
   const cashflow = monthKeys.map((month) => ({
     month,
-    inMinor: flowByKey.get(`${month}|in`) || 0,
+    inMinor:  flowByKey.get(`${month}|in`)  || 0,
     outMinor: Math.abs(flowByKey.get(`${month}|out`) || 0),
   }));
-  const currentMonth = cashflow[cashflow.length - 1];
 
-  // Daily total balance, worked backwards from today's balance using each
-  // day's net movement.
+  // ── Balance trend (fixed: last 7 days) ───────────────────────────────────
   const dayKeys = lastDayKeys(TREND_DAYS);
   const dailyRows = accountIds.length
     ? await Transaction.aggregate([
@@ -72,8 +123,8 @@ const getSummary = asyncHandler(async (req, res) => {
         },
       ])
     : [];
-  const netByDay = new Map(dailyRows.map((row) => [row._id, row.net]));
 
+  const netByDay = new Map(dailyRows.map((row) => [row._id, row.net]));
   const balanceTrend = new Array(dayKeys.length);
   let running = totalBalanceMinor;
   for (let i = dayKeys.length - 1; i >= 0; i -= 1) {
@@ -81,6 +132,7 @@ const getSummary = asyncHandler(async (req, res) => {
     running -= netByDay.get(dayKeys[i]) || 0;
   }
 
+  // ── Recent transactions & pending count ───────────────────────────────────
   const [recentTransactions, pendingCount] = await Promise.all([
     Transaction.find({ user: userId }).sort({ createdAt: -1, _id: -1 }).limit(RECENT_COUNT),
     Transaction.countDocuments({ user: userId, status: "pending" }),
@@ -90,8 +142,8 @@ const getSummary = asyncHandler(async (req, res) => {
     currency: CURRENCY,
     totals: {
       balanceMinor: totalBalanceMinor,
-      moneyInMinor: currentMonth.inMinor,
-      moneyOutMinor: currentMonth.outMinor,
+      moneyInMinor,
+      moneyOutMinor,
       pendingCount,
     },
     accounts,

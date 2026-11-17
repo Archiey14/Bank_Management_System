@@ -15,6 +15,12 @@ const authMiddleware = async (req, res, next) => {
 
   try {
     const decoded = verifyToken(token);
+
+    // Tokens issued for a pending two-step login are not session tokens.
+    if (decoded.purpose) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
     const user = await User.findById(decoded.id);
 
     if (!user) {

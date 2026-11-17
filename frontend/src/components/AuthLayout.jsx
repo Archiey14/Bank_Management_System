@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import './auth.css'
 import { ShieldCheckIcon } from './icons'
+import BrandLogo, { NorthbankMark } from './BrandLogo'
+import ThemeToggle from './ThemeToggle'
 
 /**
  * Shared split-screen shell for the Login and Signup pages.
@@ -12,10 +14,7 @@ export default function AuthLayout({ pill, headline, description, panelCard, chi
       <aside className="auth-brand">
         <div className="auth-brand__dots" aria-hidden="true" />
 
-        <Link to="/" className="auth-brand__top" aria-label="Northbank home">
-          <div className="auth-logo">northbank</div>
-          <div className="auth-logo__sub">Banking workspace</div>
-        </Link>
+        <BrandLogo size={40} variant="hero" className="auth-brand__top" />
 
         <div className="auth-brand__middle">
           <span className="auth-pill">{pill}</span>
@@ -40,23 +39,27 @@ export default function AuthLayout({ pill, headline, description, panelCard, chi
         </div>
 
         <div className="auth-brand__footer">
-          <span>© 2026 Northbank</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <NorthbankMark size={18} />
+            © 2026 Northbank
+          </span>
           <span>Banking, thoughtfully connected.</span>
         </div>
       </aside>
 
       <main className="auth-form-side">
         <div className="auth-form-side__top">
-          <span>Need a hand?</span>
-          <a href="#support">Contact support</a>
+          <ThemeToggle />
+          <span style={{ marginLeft: 10 }}>Need a hand?</span>
+          <a href="mailto:support@northbank.in">Contact support</a>
         </div>
 
         <div className="auth-form-wrap">{children}</div>
 
         <div className="auth-form-side__footer">
           <div className="auth-form-side__links">
-            <a href="#privacy">Privacy</a>
-            <a href="#terms">Terms</a>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
           </div>
           <div className="auth-form-side__secure">
             <ShieldCheckIcon size={14} />

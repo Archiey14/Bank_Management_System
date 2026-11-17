@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import './landing.css'
 import { ArrowRightIcon, CheckIcon, ShieldCheckIcon, TrendUpIcon } from '../components/icons'
+import BrandLogo from '../components/BrandLogo'
+import SiteFooter from '../components/SiteFooter'
+import ThemeToggle from '../components/ThemeToggle'
 
 /* Small local icon set for the feature cards */
 const Icon = ({ children }) => (
@@ -94,17 +97,16 @@ const features = [
 ]
 
 const stats = [
-  { num: '$24.5M', cap: 'Total deposits' },
+  { num: '₹24.58 Cr', cap: 'Total deposits' },
   { num: '18,492', cap: 'Active accounts' },
   { num: '1,284', cap: 'Transactions today' },
   { num: '99.99%', cap: 'Uptime' },
 ]
 
 const roles = [
-  { name: 'Teller', perms: ['Deposits', 'Withdrawals'] },
-  { name: 'Branch manager', perms: ['Approvals', 'Reports'] },
-  { name: 'Compliance', perms: ['Audit log', 'Reviews'] },
-  { name: 'Administrator', perms: ['Users', 'Settings'] },
+  { name: 'Customer', perms: ['Accounts', 'Transfers', 'Fixed Deposits', 'Statements'] },
+  { name: 'Staff', perms: ['Customer directory', 'Deposits & Withdrawals', 'Applications', 'Transfer reviews'] },
+  { name: 'Admin', perms: ['User management', 'Staff creation', 'Audit logs', 'System reports'] },
 ]
 
 export default function Landing() {
@@ -113,10 +115,7 @@ export default function Landing() {
       {/* ---------- Hero ---------- */}
       <header className="lp-hero">
         <nav className="lp-nav">
-          <Link to="/" className="lp-logo">
-            <span className="lp-logo__name">northbank</span>
-            <span className="lp-logo__sub">Banking workspace</span>
-          </Link>
+          <BrandLogo size={40} variant="hero" />
 
           <div className="lp-nav__links">
             <a href="#features">Features</a>
@@ -125,6 +124,7 @@ export default function Landing() {
           </div>
 
           <div className="lp-nav__actions">
+            <ThemeToggle className="lp-theme-toggle" />
             <Link to="/login" className="lp-nav__signin">
               Sign in
             </Link>
@@ -255,28 +255,7 @@ export default function Landing() {
       </section>
 
       {/* ---------- Footer ---------- */}
-      <footer className="lp-footer" id="contact">
-        <div className="lp-footer__brand">
-          <a
-            href="#top"
-            className="lp-logo__name"
-            aria-label="Back to top"
-            onClick={(e) => {
-              e.preventDefault()
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-          >
-            northbank
-          </a>
-          <span>Banking, thoughtfully connected.</span>
-        </div>
-        <div className="lp-footer__links">
-          <a href="#privacy">Privacy</a>
-          <a href="#terms">Terms</a>
-          <a href="#support">Contact support</a>
-        </div>
-        <div className="lp-footer__copy">© 2026 Northbank</div>
-      </footer>
+      <SiteFooter id="contact" />
     </div>
   )
 }
