@@ -21,6 +21,13 @@ const API = axios.create({
   },
 })
 
+// Immediately pre-warm server in the background to eliminate cold-start wait times
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    API.get('/health').catch(() => {})
+  }, 50)
+}
+
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token') ?? sessionStorage.getItem('token')
   if (token) {

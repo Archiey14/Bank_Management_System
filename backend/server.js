@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const compression = require("compression");
 const validateEnv = require("./src/config/validateEnv");
 const connectDB = require("./src/config/db");
 const logger = require("./src/utils/logger");
@@ -24,6 +25,7 @@ const errorHandler = require("./src/middleware/errorHandler");
 validateEnv();
 
 const app = express();
+app.use(compression());
 
 const allowedOrigins = [
   process.env.CLIENT_URL,

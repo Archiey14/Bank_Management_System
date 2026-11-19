@@ -1,32 +1,42 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/authStore'
 import { ConsentProvider } from './context/ConsentContext'
 import { ThemeProvider } from './context/ThemeContext'
 import CookieConsent from './components/CookieConsent'
+import ProtectedRoute from './components/ProtectedRoute'
+
+// Eagerly loaded for instant first paint
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
-import Terms from './pages/Terms'
-import Privacy from './pages/Privacy'
-import Dashboard from './pages/Dashboard'
-import Accounts from './pages/Accounts'
-import Apply from './pages/Apply'
-import FixedDeposits from './pages/FixedDeposits'
-import Staff from './pages/Staff'
-import Admin from './pages/Admin'
-import Transactions from './pages/Transactions'
-import Transfers from './pages/Transfers'
-import DebitCards from './pages/DebitCards'
-import CreditCards from './pages/CreditCards'
-import CreditCardApplication from './pages/CreditCardApplication'
-import Deposits from './pages/Deposits'
-import StaffCards from './pages/StaffCards'
-import Settings from './pages/Settings'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import ProtectedRoute from './components/ProtectedRoute'
+
+// Code-split / lazy loaded routes (downloaded only when accessed)
+const Terms = lazy(() => import('./pages/Terms'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Accounts = lazy(() => import('./pages/Accounts'))
+const Apply = lazy(() => import('./pages/Apply'))
+const FixedDeposits = lazy(() => import('./pages/FixedDeposits'))
+const Staff = lazy(() => import('./pages/Staff'))
+const Admin = lazy(() => import('./pages/Admin'))
+const Transactions = lazy(() => import('./pages/Transactions'))
+const Transfers = lazy(() => import('./pages/Transfers'))
+const DebitCards = lazy(() => import('./pages/DebitCards'))
+const CreditCards = lazy(() => import('./pages/CreditCards'))
+const CreditCardApplication = lazy(() => import('./pages/CreditCardApplication'))
+const Deposits = lazy(() => import('./pages/Deposits'))
+const StaffCards = lazy(() => import('./pages/StaffCards'))
+const Settings = lazy(() => import('./pages/Settings'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+
+const PageLoader = () => (
+  <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="db-loading" style={{ margin: 0 }}>Loading workspace…</div>
+  </div>
+)
 
 function PublicOnlyRoute({ children }) {
   const { user, token, loading } = useAuth()
@@ -59,7 +69,8 @@ function AppRoutes() {
   return (
     <>
       <ScrollToTop />
-      <Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
@@ -202,7 +213,8 @@ function AppRoutes() {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </>
   )
 }
