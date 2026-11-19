@@ -1,10 +1,13 @@
+const crypto = require("crypto");
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const Account = require("../models/Account");
 const CreditCard = require("../models/CreditCard");
 const CreditCardApplication = require("../models/CreditCardApplication");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
 const { recordAudit } = require("../utils/audit");
+const { sendCardApprovalEmail, sendCardRejectionEmail } = require("../services/emailService");
 const { clampInt, escapeRegex, isObjectIdString } = require("../utils/validators");
 const { generateCardLast4, cardExpiry, rupees } = require("../utils/cards");
 const {
@@ -130,6 +133,10 @@ const approveCreditApplication = asyncHandler(async (req, res) => {
     throw new AppError("The applicant already holds the maximum number of credit cards", 400);
   }
 
+  // Generate 4-character random hexadecimal PIN (e.g. "A4F2", "8C1D")
+  const generatedPin = crypto.randomBytes(2).toString("hex").toUpperCase();
+  const pinHash = await bcrypt.hash(generatedPin, 10);
+
   let card;
   await mongoose.connection.transaction(async (session) => {
     const { expiryMonth, expiryYear } = cardExpiry(CARD_VALIDITY_YEARS);
@@ -142,6 +149,7 @@ const approveCreditApplication = asyncHandler(async (req, res) => {
           expiryMonth,
           expiryYear,
           creditLimit: approvedLimit,
+          pinHash,
         },
       ],
       { session }
@@ -164,6 +172,24 @@ const approveCreditApplication = asyncHandler(async (req, res) => {
     if (!claimed) throw new AppError("This application has already been reviewed", 409);
   });
 
+  const updated = await CreditCardApplication.findById(application._id).populate("user", "name email");
+
+  // Send congratulatory approval email with generated PIN
+  if (updated?.user?.email) {
+    try {
+      await sendCardApprovalEmail({
+        to: updated.user.email,
+        recipientName: updated.user.name,
+        cardType: "credit",
+        last4: card.last4,
+        pin: generatedPin,
+        limit: approvedLimit,
+      });
+    } catch (err) {
+      // Non-blocking for response in local development
+    }
+  }
+
   await recordAudit({
     actor: req.user,
     action: "creditcard.approve",
@@ -173,8 +199,12 @@ const approveCreditApplication = asyncHandler(async (req, res) => {
     req,
   });
 
-  const updated = await CreditCardApplication.findById(application._id).populate("user", "name email");
-  res.status(200).json({ message: "Application approved and card issued", application: updated, card });
+  res.status(200).json({
+    message: "Application approved and card issued with PIN. Approval email sent.",
+    application: updated,
+    card,
+    generatedPin,
+  });
 });
 
 // PATCH /api/cards/credit-applications/:id/reject
@@ -200,6 +230,20 @@ const rejectCreditApplication = asyncHandler(async (req, res) => {
     summary: `Rejected ${application.applicationNumber}: ${remarks}`,
     req,
   });
+
+  if (updated?.user?.email) {
+    try {
+      await sendCardRejectionEmail({
+        to: updated.user.email,
+        recipientName: updated.user.name,
+        cardType: "credit",
+        applicationNumber: application.applicationNumber,
+        remarks,
+      });
+    } catch (err) {
+      // Non-blocking in dev
+    }
+  }
 
   res.status(200).json({ message: "Application rejected", application: updated });
 });

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import PasswordField from '../components/PasswordField'
-import { ArrowRightIcon, CheckIcon } from '../components/icons'
+import { ArrowRightIcon, CheckIcon, GoogleIcon } from '../components/icons'
 import { useAuth } from '../context/authStore'
 
 const FEATURES = [
@@ -34,14 +34,35 @@ function PanelCard() {
 }
 
 export default function Signup() {
-  const { register } = useAuth()
+  const { register, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [agree, setAgree] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const handleGoogleSignIn = async () => {
+    setError('')
+    setGoogleLoading(true)
+    try {
+      const user = await signInWithGoogle(true)
+      if (user.role === 'admin') navigate('/admin')
+      else if (user.role === 'staff') navigate('/staff')
+      else navigate('/dashboard')
+    } catch (err) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        return
+      }
+      setError(
+        err.response?.data?.message || err.message || 'Google sign-up failed. Please try again.'
+      )
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -130,13 +151,27 @@ export default function Signup() {
           </span>
         </label>
 
-        <button type="submit" className="btn-primary" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting || googleLoading}>
           {submitting ? 'Creating account...' : 'Create account'}
           <ArrowRightIcon />
         </button>
 
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <button
+          type="button"
+          className="btn-google"
+          onClick={handleGoogleSignIn}
+          disabled={submitting || googleLoading}
+        >
+          <GoogleIcon />
+          <span>{googleLoading ? 'Connecting to Google…' : 'Sign up with Google'}</span>
+        </button>
+
         <p className="auth-switch">
-          Already have an account?
+          Already have an account?{' '}
           <Link to="/login" className="auth-link">
             Sign in
           </Link>

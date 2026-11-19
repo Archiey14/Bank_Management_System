@@ -118,6 +118,104 @@
   color: #94a3b8;
 }
 
+/* Download Actions Bar */
+.legal-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+
+[data-theme='dark'] .legal-actions-bar {
+  border-bottom-color: #1a233a;
+}
+
+.legal-actions-bar .legal-updated {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.legal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line, #cbd5e1);
+  color: var(--ink, #0f172a);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.legal-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #4f46e5;
+}
+
+[data-theme='dark'] .legal-btn {
+  background: #111728;
+  border-color: #273552;
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .legal-btn:hover {
+  background: #1a2238;
+  border-color: #3b4d75;
+  color: #818cf8;
+}
+
+.legal-btn--secondary {
+  opacity: 0.9;
+}
+
+/* Print styles for saving clean PDF */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .legal-header,
+  .site-footer,
+  .legal-actions,
+  .cookie-banner {
+    display: none !important;
+  }
+  .legal-page {
+    background: transparent !important;
+    min-height: auto !important;
+  }
+  .legal-container {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .legal-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .legal-box {
+    border: 1px solid #ccc !important;
+    background: #f9f9f9 !important;
+  }
+}
+
 .legal-body {
   font-size: 1rem;
   line-height: 1.7;

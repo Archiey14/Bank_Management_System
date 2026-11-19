@@ -3,6 +3,7 @@ const {
   listDebitCards,
   requestDebitCard,
   activateDebitCard,
+  changeDebitCardPin,
   setDebitCardLimit,
   blockDebitCard,
 } = require("../controllers/debitCardController");
@@ -12,7 +13,15 @@ const {
   purchase,
   repay,
   blockCreditCard,
+  changeCreditCardPin,
 } = require("../controllers/creditCardController");
+const {
+  applyDebitCard,
+  myDebitApplications,
+  listDebitApplications,
+  approveDebitApplication,
+  rejectDebitApplication,
+} = require("../controllers/debitApplicationController");
 const {
   createCreditApplication,
   myCreditApplications,
@@ -40,6 +49,7 @@ const staffOnly = authorizeRoles("staff", "admin");
 router.get("/debit", customerOnly, listDebitCards);
 router.post("/debit", customerOnly, requestDebitCard);
 router.post("/debit/:id/activate", customerOnly, activateDebitCard);
+router.post("/debit/:id/pin", customerOnly, changeDebitCardPin);
 router.patch("/debit/:id/limit", customerOnly, setDebitCardLimit);
 router.post("/debit/:id/block", customerOnly, blockDebitCard);
 
@@ -49,6 +59,14 @@ router.get("/credit/:id/transactions", customerOnly, listCardTransactions);
 router.post("/credit/:id/purchase", customerOnly, moneyLimiter, purchase);
 router.post("/credit/:id/repay", customerOnly, moneyLimiter, repay);
 router.post("/credit/:id/block", customerOnly, blockCreditCard);
+router.post("/credit/:id/pin", customerOnly, changeCreditCardPin);
+
+// ---- Debit card applications ----
+router.post("/debit-applications", customerOnly, applyDebitCard);
+router.get("/debit-applications/mine", customerOnly, myDebitApplications);
+router.get("/debit-applications", staffOnly, listDebitApplications);
+router.patch("/debit-applications/:id/approve", staffOnly, approveDebitApplication);
+router.patch("/debit-applications/:id/reject", staffOnly, rejectDebitApplication);
 
 // ---- Credit card applications ----
 router.post("/credit-applications", customerOnly, createCreditApplication);

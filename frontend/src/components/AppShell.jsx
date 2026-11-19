@@ -26,6 +26,7 @@ import '../pages/cards.css'
 const CUSTOMER_NAV = [
   { to: '/dashboard', label: 'Dashboard Overview', icon: <GridIcon /> },
   { to: '/accounts', label: 'My Bank Accounts', icon: <WalletIcon /> },
+  { to: '/apply', label: 'Open Account Application', icon: <FileIcon /> },
   { to: '/cards/debit', label: 'Debit Cards', icon: <CardIcon /> },
   { to: '/cards/credit', label: 'Credit Cards', icon: <CardIcon />, end: true },
   { to: '/cards/credit/apply', label: 'Credit Card Application', icon: <FileIcon /> },

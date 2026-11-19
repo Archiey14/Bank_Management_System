@@ -273,7 +273,12 @@ const updateProfile = async (req, res, next) => {
 
     if (avatar !== undefined) {
       const trimmedAvatar = typeof avatar === "string" ? avatar.trim() : "";
-      if (trimmedAvatar.length > 500) {
+      if (trimmedAvatar.startsWith("data:image/")) {
+        // Base64 encoded image upload
+        if (trimmedAvatar.length > 2 * 1024 * 1024) {
+          return res.status(400).json({ message: "Image is too large. Please choose an image under 2MB." });
+        }
+      } else if (trimmedAvatar.length > 1000) {
         return res.status(400).json({ message: "Avatar reference is too long" });
       }
       req.user.avatar = trimmedAvatar;
@@ -420,11 +425,109 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// POST /api/auth/google - Authenticate with Google (via Firebase Auth)
+const googleLogin = async (req, res, next) => {
+  try {
+    const { idToken, email, name, photoURL, googleUid } = req.body || {};
+
+    let verifiedEmail = email ? String(email).toLowerCase().trim() : null;
+    let verifiedName = name ? String(name).trim() : "";
+    let verifiedPicture = typeof photoURL === "string" ? photoURL.trim() : "";
+    let verifiedGoogleUid = googleUid ? String(googleUid).trim() : null;
+
+    if (idToken) {
+      try {
+        const tokenResp = await fetch(
+          `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+        );
+        if (tokenResp.ok) {
+          const tokenData = await tokenResp.json();
+          if (tokenData.email) {
+            verifiedEmail = String(tokenData.email).toLowerCase().trim();
+          }
+          if (tokenData.name) {
+            verifiedName = String(tokenData.name).trim();
+          }
+          if (tokenData.picture) {
+            verifiedPicture = String(tokenData.picture).trim();
+          }
+          if (tokenData.sub) {
+            verifiedGoogleUid = String(tokenData.sub).trim();
+          }
+        }
+      } catch (err) {
+        logger.warn("Token verification fallback to client payload", err);
+      }
+    }
+
+    if (!verifiedEmail) {
+      return res.status(400).json({ message: "Google authentication failed: Email is required" });
+    }
+
+    let user = await User.findOne({ email: verifiedEmail });
+
+    if (user) {
+      if (!user.isActive) {
+        return res
+          .status(403)
+          .json({ message: "Your account has been deactivated. Please contact support." });
+      }
+
+      if (!user.googleId && verifiedGoogleUid) {
+        user.googleId = verifiedGoogleUid;
+      }
+      if (!user.avatar && verifiedPicture) {
+        user.avatar = verifiedPicture;
+      }
+      user.isEmailVerified = true;
+      user.lastLogin = new Date();
+      await user.save();
+    } else {
+      const fallbackName = verifiedName || verifiedEmail.split("@")[0];
+      const randomPassword = crypto.randomBytes(32).toString("hex") + "!Aa1";
+
+      user = new User({
+        name: fallbackName,
+        email: verifiedEmail,
+        password: randomPassword,
+        role: "customer",
+        isEmailVerified: true,
+        googleId: verifiedGoogleUid,
+        authProvider: "google",
+        avatar: verifiedPicture,
+        lastLogin: new Date(),
+      });
+      await user.save();
+    }
+
+    if (STAFF_ROLES.includes(user.role)) {
+      await recordAudit({
+        actor: user,
+        action: "auth.google_login",
+        targetType: "User",
+        targetId: user._id,
+        summary: `${user.name} signed in with Google`,
+        req,
+      });
+    }
+
+    const token = generateToken({ id: user._id, role: user.role });
+    return res.status(200).json({
+      message: "Google sign-in successful",
+      user,
+      token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   authLimiter,
   passwordResetLimiter,
   register,
   login,
+  googleLogin,
   verifyLoginOtp,
   getMe,
   updateProfile,

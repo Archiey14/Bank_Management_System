@@ -8,6 +8,7 @@ const debitCardSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     account: { type: mongoose.Schema.Types.ObjectId, ref: "Account", required: true, index: true },
+    application: { type: mongoose.Schema.Types.ObjectId, ref: "DebitCardApplication" },
     last4: { type: String, required: true, match: [/^\d{4}$/, "Invalid card digits"] },
     expiryMonth: { type: Number, required: true, min: 1, max: 12 },
     expiryYear: { type: Number, required: true },

@@ -5,6 +5,7 @@ import CardVisual from '../components/CardVisual'
 import Modal from '../components/Modal'
 import {
   blockCreditCard,
+  changeCreditCardPin,
   listAccounts,
   listCreditCards,
   listCreditCardTransactions,
@@ -46,6 +47,11 @@ export default function CreditCards() {
   const [showBlock, setShowBlock] = useState(false)
   const [blockBusy, setBlockBusy] = useState(false)
   const [blockError, setBlockError] = useState('')
+
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinForm, setPinForm] = useState({ pin: '', confirmPin: '' })
+  const [pinBusy, setPinBusy] = useState(false)
+  const [pinError, setPinError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -190,6 +196,33 @@ export default function CreditCards() {
     }
   }
 
+  const handlePinSubmit = async (event) => {
+    event.preventDefault()
+    setPinError('')
+    const cleanPin = pinForm.pin.trim().toUpperCase()
+    if (!/^[0-9A-F]{4,6}$/.test(cleanPin)) {
+      setPinError('PIN must be 4 to 6 characters (digits 0-9 or hexadecimal A-F).')
+      return
+    }
+    if (cleanPin !== pinForm.confirmPin.trim().toUpperCase()) {
+      setPinError('The two PINs do not match.')
+      return
+    }
+
+    setPinBusy(true)
+    try {
+      await changeCreditCardPin(card._id, cleanPin)
+      setShowPinModal(false)
+      setPinForm({ pin: '', confirmPin: '' })
+      setNotice('Credit card PIN updated successfully.')
+      refresh()
+    } catch (err) {
+      setPinError(err.response?.data?.message || 'Could not update your PIN. Please try again.')
+    } finally {
+      setPinBusy(false)
+    }
+  }
+
   const handleBlock = async (event) => {
     event.preventDefault()
     setBlockBusy(true)
@@ -312,16 +345,29 @@ export default function CreditCards() {
                 <p className="db-card__sub">•••• •••• •••• {card.last4} · Selected card</p>
               </div>
               {card.status === 'active' && (
-                <button
-                  type="button"
-                  className="db-btn db-btn--danger"
-                  onClick={() => {
-                    setBlockError('')
-                    setShowBlock(true)
-                  }}
-                >
-                  Block card
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="db-btn db-btn--outline"
+                    onClick={() => {
+                      setPinError('')
+                      setPinForm({ pin: '', confirmPin: '' })
+                      setShowPinModal(true)
+                    }}
+                  >
+                    Change PIN
+                  </button>
+                  <button
+                    type="button"
+                    className="db-btn db-btn--danger"
+                    onClick={() => {
+                      setBlockError('')
+                      setShowBlock(true)
+                    }}
+                  >
+                    Block card
+                  </button>
+                </div>
               )}
             </div>
 
@@ -579,6 +625,79 @@ export default function CreditCards() {
                 disabled={blockBusy}
               >
                 Keep card
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {showPinModal && card && (
+        <Modal
+          title="Change Credit Card PIN"
+          sub={`Update the PIN for credit card ending in •••• ${card.last4}.`}
+          onClose={() => {
+            if (!pinBusy) setShowPinModal(false)
+          }}
+          busy={pinBusy}
+        >
+          <form className="db-form" onSubmit={handlePinSubmit} style={{ marginTop: 0 }} autoComplete="off">
+            <div className="db-form__row">
+              <div className="field">
+                <label htmlFor="cc-new-pin">New PIN</label>
+                <input
+                  id="cc-new-pin"
+                  className="input input--code"
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 7E2B"
+                  autoComplete="new-password"
+                  value={pinForm.pin}
+                  onChange={(event) =>
+                    setPinForm((current) => ({
+                      ...current,
+                      pin: event.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase(),
+                    }))
+                  }
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="cc-confirm-pin">Confirm PIN</label>
+                <input
+                  id="cc-confirm-pin"
+                  className="input input--code"
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 7E2B"
+                  autoComplete="new-password"
+                  value={pinForm.confirmPin}
+                  onChange={(event) =>
+                    setPinForm((current) => ({
+                      ...current,
+                      confirmPin: event.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase(),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="field-hint">
+              Enter 4 to 6 digits or hexadecimal characters (0-9, A-F). Keep this PIN secret.
+            </div>
+            {pinError && (
+              <div className="db-alert db-alert--error" role="alert">
+                {pinError}
+              </div>
+            )}
+            <div className="db-form__actions">
+              <button type="submit" className="db-btn db-btn--primary" disabled={pinBusy}>
+                {pinBusy ? 'Updating…' : 'Update PIN'}
+              </button>
+              <button
+                type="button"
+                className="db-btn db-btn--outline"
+                onClick={() => setShowPinModal(false)}
+                disabled={pinBusy}
+              >
+                Cancel
               </button>
             </div>
           </form>

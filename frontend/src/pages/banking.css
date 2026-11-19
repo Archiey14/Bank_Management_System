@@ -291,6 +291,23 @@
   height: 42px;
   padding: 0 16px;
 }
+.db-filters--inline {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.db-filters--inline .field {
+  margin: 0;
+}
+.db-filters--inline .db-btn {
+  height: 42px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
 .db-filters__wide {
   grid-column: span 2;
 }
@@ -694,3 +711,238 @@
     grid-column: span 1;
   }
 }
+
+/* ---------- KYC Document Upload & Preview ---------- */
+.kyc-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 720px) {
+  .kyc-docs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kyc-doc-card {
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--card, #ffffff);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.kyc-doc-card.is-uploaded {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+.kyc-doc-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.kyc-doc-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+  margin: 0;
+}
+.kyc-doc-card__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.kyc-doc-card.is-uploaded .kyc-doc-card__badge {
+  background: #dcfce7;
+  color: #15803d;
+}
+.kyc-doc-card__desc {
+  font-size: 12px;
+  color: var(--muted, #64748b);
+  line-height: 1.4;
+  margin: 0 0 14px 0;
+}
+
+.kyc-upload-dropzone {
+  border: 2px dashed var(--line, #cbd5e1);
+  border-radius: 8px;
+  padding: 18px 12px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--tint, #f8fafc);
+  transition: all 0.15s ease;
+  position: relative;
+}
+.kyc-upload-dropzone:hover {
+  border-color: var(--indigo, #4f46e5);
+  background: #f5f3ff;
+}
+.kyc-upload-dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.kyc-upload-dropzone__icon {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 6px;
+  color: var(--indigo, #4f46e5);
+}
+.kyc-upload-dropzone__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+.kyc-upload-dropzone__hint {
+  font-size: 11px;
+  color: var(--muted, #64748b);
+  margin-top: 2px;
+}
+
+.kyc-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px;
+}
+.kyc-preview-thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.kyc-preview-thumb:hover {
+  transform: scale(1.05);
+}
+.kyc-preview-info {
+  flex: 1;
+  min-width: 0;
+}
+.kyc-preview-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.kyc-preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.kyc-preview-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--indigo, #4f46e5);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.kyc-preview-btn--remove {
+  color: #dc2626;
+}
+
+/* Review step document summary cards */
+.kyc-review-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+@media (max-width: 768px) {
+  .kyc-review-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .kyc-review-summary {
+    grid-template-columns: 1fr;
+  }
+}
+.kyc-review-card {
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--card, #ffffff);
+  text-align: center;
+}
+.kyc-review-card__img {
+  width: 100%;
+  height: 90px;
+  object-fit: contain;
+  background: #f8fafc;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.kyc-review-card__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+
+/* Modal lightbox for staff & applicant */
+.kyc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+}
+.kyc-modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+.kyc-modal-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.kyc-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #0f172a;
+}
+.kyc-modal-img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+

@@ -119,6 +119,32 @@ const setDebitCardLimit = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Daily ATM limit updated", card });
 });
 
+// POST /api/cards/debit/:id/pin - change the PIN of an active or inactive debit card.
+// Accepts 4-6 digits or hexadecimal characters (e.g. 1234 or A4F2).
+const changeDebitCardPin = asyncHandler(async (req, res) => {
+  const pin = typeof req.body?.pin === "string" ? req.body.pin.trim().toUpperCase() : "";
+  if (!/^[0-9A-F]{4,6}$/.test(pin)) {
+    throw new AppError("Choose a 4 to 6 character PIN (digits 0-9 or hexadecimal A-F)", 400);
+  }
+  if (/^(\w)\1+$/.test(pin) || WEAK_PINS.has(pin)) {
+    throw new AppError("Choose a PIN that is harder to guess", 400);
+  }
+
+  const card = await findOwnCard(req.params.id, req.user._id);
+  if (card.status === "blocked") throw new AppError(BLOCKED_MESSAGE, 409);
+
+  const pinHash = await bcrypt.hash(pin, 10);
+  const updated = await DebitCard.findOneAndUpdate(
+    { _id: card._id, user: req.user._id, status: { $ne: "blocked" } },
+    { $set: { pinHash, status: "active", activatedAt: card.activatedAt || new Date() } },
+    { returnDocument: "after" }
+  ).populate("account", ACCOUNT_FIELDS);
+
+  if (!updated) throw new AppError("This card PIN could not be updated", 409);
+
+  res.status(200).json({ message: "Debit card PIN updated successfully", card: updated });
+});
+
 // POST /api/cards/debit/:id/block - customers can block; only staff can release.
 const blockDebitCard = asyncHandler(async (req, res) => {
   const card = await findOwnCard(req.params.id, req.user._id);
@@ -136,6 +162,7 @@ module.exports = {
   listDebitCards,
   requestDebitCard,
   activateDebitCard,
+  changeDebitCardPin,
   setDebitCardLimit,
   blockDebitCard,
 };

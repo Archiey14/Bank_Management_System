@@ -78,6 +78,9 @@ export default function Staff() {
   const [reviewNote, setReviewNote] = useState('')
   const [reviewingTxId, setReviewingTxId] = useState('')
 
+  // KYC Document Preview Modal
+  const [docModal, setDocModal] = useState({ open: false, title: '', src: '' })
+
   const load = async (showSpinner = true) => {
     if (showSpinner) {
       setLoading(true)
@@ -388,13 +391,13 @@ export default function Staff() {
               </div>
 
               <form
-                className="db-filters"
+                className="db-filters db-filters--inline"
                 onSubmit={(event) => {
                   event.preventDefault()
                   load(true)
                 }}
               >
-                <div className="field db-filters__wide">
+                <div className="field" style={{ flex: '1 1 240px', minWidth: 200, maxWidth: 360 }}>
                   <label htmlFor="staff-search">Search Account Number</label>
                   <input
                     id="staff-search"
@@ -405,7 +408,7 @@ export default function Staff() {
                     onChange={(event) => setSearch(event.target.value.replace(/\D/g, ''))}
                   />
                 </div>
-                <div className="field">
+                <div className="field" style={{ flex: '0 1 180px', minWidth: 140 }}>
                   <label htmlFor="staff-status">Status</label>
                   <select
                     id="staff-status"
@@ -421,11 +424,26 @@ export default function Staff() {
                     ))}
                   </select>
                 </div>
-                <div className="db-filters__actions">
+                <div className="field" style={{ margin: 0, alignSelf: 'flex-end' }}>
                   <button type="submit" className="db-btn db-btn--primary">
                     Search
                   </button>
                 </div>
+                {(search || statusFilter) && (
+                  <div className="field" style={{ margin: 0, alignSelf: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="db-btn"
+                      onClick={() => {
+                        setSearch('')
+                        setStatusFilter('')
+                        setTimeout(() => load(true), 0)
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </form>
 
               {accounts.length === 0 ? (
@@ -582,7 +600,11 @@ export default function Staff() {
                       </div>
                       <div>
                         <dt>PAN</dt>
-                        <dd>{application.pan}</dd>
+                        <dd>
+                          {application.pan && application.pan !== 'DOC_ATTACHED'
+                            ? application.pan
+                            : 'Verified from document'}
+                        </dd>
                       </div>
                       <div>
                         <dt>Occupation</dt>
@@ -599,6 +621,128 @@ export default function Staff() {
                         <dd>{formatMinor(application.initialDepositMinor || 0)}</dd>
                       </div>
                     </dl>
+
+                    {application.documents && (
+                      <div
+                        style={{
+                          marginTop: 14,
+                          paddingTop: 12,
+                          borderTop: '1px solid var(--line, #e2e8f0)',
+                        }}
+                      >
+                        <h4
+                          style={{
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            color: 'var(--muted)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            marginBottom: 8,
+                          }}
+                        >
+                          Submitted KYC Documents
+                        </h4>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: 10,
+                          }}
+                        >
+                          {[
+                            { key: 'panCard', label: 'PAN Card' },
+                            { key: 'aadhaarCard', label: 'Identity / OVD' },
+                            { key: 'photograph', label: 'Photograph' },
+                            { key: 'signature', label: 'Signature' },
+                          ].map(({ key, label }) => {
+                            const src = application.documents[key]
+                            return (
+                              <div
+                                key={key}
+                                style={{
+                                  border: '1px solid var(--line, #e2e8f0)',
+                                  borderRadius: 8,
+                                  padding: 8,
+                                  background: src ? '#f8fafc' : '#fff',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {src ? (
+                                  <>
+                                    <img
+                                      src={src}
+                                      alt={label}
+                                      style={{
+                                        width: '100%',
+                                        height: 70,
+                                        objectFit: 'contain',
+                                        borderRadius: 4,
+                                        cursor: 'pointer',
+                                        background: '#fff',
+                                        border: '1px solid #e2e8f0',
+                                      }}
+                                      onClick={() =>
+                                        setDocModal({
+                                          open: true,
+                                          title: `${application.applicationNumber} · ${label}`,
+                                          src,
+                                        })
+                                      }
+                                      title="Click to inspect full document"
+                                    />
+                                    <div
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        color: 'var(--ink)',
+                                        marginTop: 4,
+                                      }}
+                                    >
+                                      {label}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      style={{
+                                        border: 'none',
+                                        background: 'none',
+                                        color: 'var(--indigo, #4f46e5)',
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        marginTop: 2,
+                                      }}
+                                      onClick={() =>
+                                        setDocModal({
+                                          open: true,
+                                          title: `${application.applicationNumber} · ${label}`,
+                                          src,
+                                        })
+                                      }
+                                    >
+                                      Inspect ↗
+                                    </button>
+                                  </>
+                                ) : (
+                                  <div
+                                    style={{
+                                      padding: '16px 0',
+                                      fontSize: 11,
+                                      color: 'var(--muted)',
+                                    }}
+                                  >
+                                    <div>{label}</div>
+                                    <span style={{ fontSize: 10, color: '#94a3b8' }}>
+                                      Not provided
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {rejectingId === application._id ? (
                       <div className="db-form" style={{ marginTop: 12 }}>
@@ -932,6 +1076,31 @@ export default function Staff() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* KYC Document Lightbox Modal */}
+      {docModal.open && (
+        <div
+          className="kyc-modal-overlay"
+          onClick={() => setDocModal({ open: false, title: '', src: '' })}
+        >
+          <div className="kyc-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="kyc-modal-head">
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{docModal.title}</h3>
+              <button
+                type="button"
+                className="db-btn db-btn--outline"
+                style={{ padding: '4px 10px', fontSize: 12 }}
+                onClick={() => setDocModal({ open: false, title: '', src: '' })}
+              >
+                Close ✕
+              </button>
+            </div>
+            <div className="kyc-modal-body">
+              <img src={docModal.src} alt={docModal.title} className="kyc-modal-img" />
+            </div>
           </div>
         </div>
       )}

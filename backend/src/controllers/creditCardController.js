@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const Account = require("../models/Account");
 const CreditCard = require("../models/CreditCard");
 const CardTransaction = require("../models/CardTransaction");
@@ -265,10 +266,37 @@ const blockCreditCard = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Card blocked", card: updated });
 });
 
+// POST /api/cards/credit/:id/pin - change the PIN of an active credit card.
+// Accepts 4-6 digits or hexadecimal characters (e.g. 1234 or A4F2).
+const changeCreditCardPin = asyncHandler(async (req, res) => {
+  const pin = typeof req.body?.pin === "string" ? req.body.pin.trim().toUpperCase() : "";
+  if (!/^[0-9A-F]{4,6}$/.test(pin)) {
+    throw new AppError("Choose a 4 to 6 character PIN (digits 0-9 or hexadecimal A-F)", 400);
+  }
+  if (/^(\w)\1+$/.test(pin)) {
+    throw new AppError("Choose a PIN that is harder to guess", 400);
+  }
+
+  const card = await findOwnCard(req.params.id, req.user._id);
+  if (card.status === "blocked") throw new AppError(BLOCKED_MESSAGE, 409);
+
+  const pinHash = await bcrypt.hash(pin, 10);
+  const updated = await CreditCard.findOneAndUpdate(
+    { _id: card._id, user: req.user._id, status: { $ne: "blocked" } },
+    { $set: { pinHash } },
+    { returnDocument: "after" }
+  );
+
+  if (!updated) throw new AppError("This credit card PIN could not be updated", 409);
+
+  res.status(200).json({ message: "Credit card PIN updated successfully", card: updated });
+});
+
 module.exports = {
   listCreditCards,
   listCardTransactions,
   purchase,
   repay,
   blockCreditCard,
+  changeCreditCardPin,
 };

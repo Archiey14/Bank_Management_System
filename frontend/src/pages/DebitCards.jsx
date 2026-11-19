@@ -5,15 +5,19 @@ import CardVisual from '../components/CardVisual'
 import Modal from '../components/Modal'
 import {
   activateDebitCard,
+  applyDebitCard,
   blockDebitCard,
+  changeDebitCardPin,
   listAccounts,
   listDebitCards,
-  requestDebitCard,
+  listMyDebitApplications,
   setDebitCardLimit,
 } from '../services/api'
 import { formatMinor, formatRupees, toMinorUnits } from '../utils/money'
 import {
+  APPLICATION_STATUS_LABELS,
   ACCOUNT_TYPE_LABELS,
+  formatDate,
   formatDateLong,
   formatDateTimeLong,
   formatExpiry,
@@ -34,24 +38,26 @@ const EMPTY_FORM = { accountId: '', pin: '', confirmPin: '', limit: '' }
 export default function DebitCards() {
   const [cards, setCards] = useState([])
   const [accounts, setAccounts] = useState([])
+  const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [notice, setNotice] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  const [modal, setModal] = useState(null) // { kind: 'request' | 'activate' | 'limit' | 'block', card }
+  const [modal, setModal] = useState(null) // { kind: 'apply' | 'changePin' | 'activate' | 'limit' | 'block', card }
   const [form, setForm] = useState(EMPTY_FORM)
   const [busy, setBusy] = useState(false)
   const [modalError, setModalError] = useState('')
 
   useEffect(() => {
     let active = true
-    Promise.all([listDebitCards(), listAccounts()])
-      .then(([cardData, accountData]) => {
+    Promise.all([listDebitCards(), listAccounts(), listMyDebitApplications()])
+      .then(([cardData, accountData, applicationData]) => {
         if (!active) return
         setCards(cardData.cards)
         setAccounts(accountData.accounts)
+        setApplications(applicationData.applications || [])
         setLoadError('')
       })
       .catch((err) => {
@@ -101,26 +107,44 @@ export default function DebitCards() {
     }
   }
 
-  const submitRequest = (event) => {
+  const submitApply = (event) => {
     event.preventDefault()
     if (!form.accountId) {
       setModalError('Choose the account this card will be linked to.')
       return
     }
-    run(() => requestDebitCard(form.accountId), 'Debit card issued. Activate it to start using it.')
+    run(
+      () => applyDebitCard(form.accountId),
+      'Debit card application submitted. Once approved by bank staff, your card will be issued and an approval email with your generated PIN will be sent.'
+    )
+  }
+
+  const submitChangePin = (event) => {
+    event.preventDefault()
+    const cleanPin = form.pin.trim().toUpperCase()
+    if (!/^[0-9A-F]{4,6}$/.test(cleanPin)) {
+      setModalError('PIN must be 4 to 6 characters (digits 0-9 or hexadecimal A-F).')
+      return
+    }
+    if (cleanPin !== form.confirmPin.trim().toUpperCase()) {
+      setModalError('The two PINs do not match.')
+      return
+    }
+    run(() => changeDebitCardPin(modal.card._id, cleanPin), 'Debit card PIN updated successfully.')
   }
 
   const submitActivate = (event) => {
     event.preventDefault()
-    if (!/^\d{4}$/.test(form.pin)) {
-      setModalError('Your PIN must be exactly 4 digits.')
+    const cleanPin = form.pin.trim().toUpperCase()
+    if (!/^[0-9A-F]{4,6}$/.test(cleanPin)) {
+      setModalError('Your PIN must be 4 to 6 digits or hexadecimal characters.')
       return
     }
-    if (form.pin !== form.confirmPin) {
+    if (cleanPin !== form.confirmPin.trim().toUpperCase()) {
       setModalError('The two PINs do not match.')
       return
     }
-    run(() => activateDebitCard(modal.card._id, form.pin), 'Card activated. You can use it now.')
+    run(() => activateDebitCard(modal.card._id, cleanPin), 'Card activated. You can use it now.')
   }
 
   const submitLimit = (event) => {
@@ -143,16 +167,16 @@ export default function DebitCards() {
       <PageHeader
         eyebrow="Personal banking"
         title="Debit Cards"
-        sub="Request cards, activate them with a PIN, set your daily ATM limit and block a card if it is lost."
+        sub="Apply for debit cards with admin approval, change your card PIN, adjust daily ATM limits, or block lost cards."
         actions={
           <button
             type="button"
             className="db-btn db-btn--primary"
-            onClick={() => openModal('request')}
+            onClick={() => openModal('apply')}
             disabled={loading || eligibleAccounts.length === 0}
             title={eligibleAccounts.length === 0 ? 'You need an active savings or current account' : undefined}
           >
-            + Request new card
+            + Apply for debit card
           </button>
         }
       />
@@ -171,7 +195,14 @@ export default function DebitCards() {
             {loadError}
           </div>
           <div className="db-form__actions" style={{ marginTop: 16 }}>
-            <button type="button" className="db-btn db-btn--outline" onClick={() => { setLoading(true); refresh() }}>
+            <button
+              type="button"
+              className="db-btn db-btn--outline"
+              onClick={() => {
+                setLoading(true)
+                refresh()
+              }}
+            >
               Try again
             </button>
           </div>
@@ -200,16 +231,16 @@ export default function DebitCards() {
               <div className="db-empty__title">No debit cards yet</div>
               <p className="db-empty__text">
                 {eligibleAccounts.length === 0
-                  ? 'Open a savings or current account first, then request a debit card for it.'
-                  : 'Request a debit card for one of your accounts. You will set a PIN when you activate it.'}
+                  ? 'Open a savings or current account first, then apply for a debit card.'
+                  : 'Apply for a debit card linked to your account. Bank staff will review and approve it, and email your initial PIN.'}
               </p>
               {eligibleAccounts.length === 0 ? (
                 <Link to="/accounts" className="db-btn db-btn--primary">
                   Go to my accounts
                 </Link>
               ) : (
-                <button type="button" className="db-btn db-btn--primary" onClick={() => openModal('request')}>
-                  Request a debit card
+                <button type="button" className="db-btn db-btn--primary" onClick={() => openModal('apply')}>
+                  Apply for a debit card
                 </button>
               )}
             </div>
@@ -259,8 +290,8 @@ export default function DebitCards() {
                         <dd>{formatDateLong(card.issuedAt)}</dd>
                       </div>
                       <div>
-                        <dt>Activated on</dt>
-                        <dd>{card.activatedAt ? formatDateTimeLong(card.activatedAt) : '—'}</dd>
+                        <dt>Status</dt>
+                        <dd>{STATUS_LABELS[card.status] || card.status}</dd>
                       </div>
                     </dl>
 
@@ -270,13 +301,21 @@ export default function DebitCards() {
                       </div>
                     ) : (
                       <div className="card-tile__actions">
-                        {card.status === 'inactive' && (
+                        {card.status === 'inactive' ? (
                           <button
                             type="button"
                             className="db-btn db-btn--primary"
                             onClick={() => openModal('activate', card)}
                           >
                             Activate card
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="db-btn db-btn--primary"
+                            onClick={() => openModal('changePin', card)}
+                          >
+                            Change PIN
                           </button>
                         )}
                         <button
@@ -300,17 +339,62 @@ export default function DebitCards() {
               })}
             </div>
           )}
+
+          {applications.length > 0 && (
+            <section className="db-card" style={{ marginTop: 28 }}>
+              <div className="db-card__head">
+                <div>
+                  <h2 className="db-card__title">Your debit card applications</h2>
+                  <p className="db-card__sub">Track the status of your debit card requests.</p>
+                </div>
+              </div>
+              <div className="db-table-wrap">
+                <table className="db-table">
+                  <thead>
+                    <tr>
+                      <th>Reference</th>
+                      <th>Linked Account</th>
+                      <th>Submitted</th>
+                      <th>Status</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applications.map((app) => (
+                      <tr key={app._id}>
+                        <td>
+                          <strong>{app.applicationNumber}</strong>
+                        </td>
+                        <td>
+                          {app.account
+                            ? `${ACCOUNT_TYPE_LABELS[app.account.type] || app.account.type} •••• ${last4(app.account.accountNumber)}`
+                            : '—'}
+                        </td>
+                        <td>{formatDate(app.createdAt)}</td>
+                        <td>
+                          <span className={`pill pill--${app.status}`}>
+                            {APPLICATION_STATUS_LABELS[app.status] || app.status}
+                          </span>
+                        </td>
+                        <td>{app.remarks || (app.status === 'pending' ? 'Under bank review' : '—')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </>
       )}
 
-      {modal?.kind === 'request' && (
+      {modal?.kind === 'apply' && (
         <Modal
-          title="Request a debit card"
-          sub="The card is linked to one of your accounts. You will set a PIN when you activate it."
+          title="Apply for a debit card"
+          sub="Select the account this card will be linked to. Bank staff will review and approve your card."
           onClose={closeModal}
           busy={busy}
         >
-          <form className="db-form" onSubmit={submitRequest} style={{ marginTop: 0 }}>
+          <form className="db-form" onSubmit={submitApply} style={{ marginTop: 0 }}>
             <div className="field">
               <label htmlFor="dc-account">Linked account</label>
               <select
@@ -326,7 +410,10 @@ export default function DebitCards() {
                   </option>
                 ))}
               </select>
-              <div className="field-hint">Each account can have up to 2 live debit cards.</div>
+              <div className="field-hint">
+                Upon admin approval, a random hexadecimal PIN will be generated and emailed directly to your registered
+                email address.
+              </div>
             </div>
             {modalError && (
               <div className="db-alert db-alert--error" role="alert">
@@ -335,7 +422,74 @@ export default function DebitCards() {
             )}
             <div className="db-form__actions">
               <button type="submit" className="db-btn db-btn--primary" disabled={busy}>
-                {busy ? 'Requesting…' : 'Request card'}
+                {busy ? 'Submitting…' : 'Submit application'}
+              </button>
+              <button type="button" className="db-btn db-btn--outline" onClick={closeModal} disabled={busy}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {modal?.kind === 'changePin' && (
+        <Modal
+          title="Change Card PIN"
+          sub={`Update the PIN for debit card ending in •••• ${modal.card?.last4}.`}
+          onClose={closeModal}
+          busy={busy}
+        >
+          <form className="db-form" onSubmit={submitChangePin} style={{ marginTop: 0 }} autoComplete="off">
+            <div className="db-form__row">
+              <div className="field">
+                <label htmlFor="dc-new-pin">New PIN</label>
+                <input
+                  id="dc-new-pin"
+                  className="input input--code"
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 7F4A"
+                  autoComplete="new-password"
+                  value={form.pin}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      pin: event.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase(),
+                    }))
+                  }
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="dc-confirm-pin">Confirm PIN</label>
+                <input
+                  id="dc-confirm-pin"
+                  className="input input--code"
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 7F4A"
+                  autoComplete="new-password"
+                  value={form.confirmPin}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      confirmPin: event.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase(),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="field-hint">
+              Choose 4 to 6 characters (digits 0-9 or hexadecimal A-F). Avoid repetitive characters like 0000.
+            </div>
+            {modalError && (
+              <div className="db-alert db-alert--error" role="alert">
+                {modalError}
+              </div>
+            )}
+            <div className="db-form__actions">
+              <button type="submit" className="db-btn db-btn--primary" disabled={busy}>
+                {busy ? 'Updating…' : 'Update PIN'}
               </button>
               <button type="button" className="db-btn db-btn--outline" onClick={closeModal} disabled={busy}>
                 Cancel
@@ -348,24 +502,27 @@ export default function DebitCards() {
       {modal?.kind === 'activate' && (
         <Modal
           title="Activate your card"
-          sub={`Choose a 4-digit PIN for the card ending ${modal.card.last4}.`}
+          sub={`Choose a PIN for the card ending in •••• ${modal.card?.last4}.`}
           onClose={closeModal}
           busy={busy}
         >
           <form className="db-form" onSubmit={submitActivate} style={{ marginTop: 0 }} autoComplete="off">
             <div className="db-form__row">
               <div className="field">
-                <label htmlFor="dc-pin">New PIN</label>
+                <label htmlFor="dc-pin">PIN</label>
                 <input
                   id="dc-pin"
                   className="input input--code"
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 9B2E"
                   autoComplete="new-password"
                   value={form.pin}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, pin: event.target.value.replace(/\D/g, '') }))
+                    setForm((current) => ({
+                      ...current,
+                      pin: event.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase(),
+                    }))
                   }
                   autoFocus
                 />
@@ -375,18 +532,21 @@ export default function DebitCards() {
                 <input
                   id="dc-pin2"
                   className="input input--code"
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 9B2E"
                   autoComplete="new-password"
                   value={form.confirmPin}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, confirmPin: event.target.value.replace(/\D/g, '') }))
+                    setForm((current) => ({
+                      ...current,
+                      confirmPin: event.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase(),
+                    }))
                   }
                 />
               </div>
             </div>
-            <div className="field-hint">Avoid easy PINs such as 1234 or 0000. Never share your PIN.</div>
+            <div className="field-hint">Enter 4 to 6 digits or hexadecimal characters (0-9, A-F). Never share your PIN.</div>
             {modalError && (
               <div className="db-alert db-alert--error" role="alert">
                 {modalError}
@@ -450,7 +610,7 @@ export default function DebitCards() {
         >
           <form className="db-form" onSubmit={submitBlock} style={{ marginTop: 0 }}>
             <p className="db-note" style={{ marginTop: 0 }}>
-              Only bank staff can release a blocked card. If you just need a replacement, you can request a new
+              Only bank staff can release a blocked card. If you just need a replacement, you can apply for a new
               card after blocking this one.
             </p>
             {modalError && (

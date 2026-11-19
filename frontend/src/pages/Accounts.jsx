@@ -294,11 +294,7 @@ export default function Accounts() {
         sub="Open new bank accounts, inspect full details, update account labels and manage deposits and withdrawals."
         actions={
           <>
-            {isKycVerified ? (
-              <button type="button" className="db-btn db-btn--primary" onClick={openNewAccountForm}>
-                + Open New Account
-              </button>
-            ) : hasPendingApplication ? (
+            {hasPendingApplication ? (
               <button
                 type="button"
                 className="db-btn db-btn--outline"
@@ -409,16 +405,11 @@ export default function Accounts() {
                     : 'Try clearing your search query or filters.'}
                 </p>
                 {accounts.length === 0 &&
-                  !hasPendingApplication &&
-                  (isKycVerified ? (
-                    <button type="button" className="db-btn db-btn--primary" onClick={openNewAccountForm}>
-                      Open your first account
-                    </button>
-                  ) : (
+                  !hasPendingApplication && (
                     <Link to="/apply" className="db-btn db-btn--primary">
                       Open your first account
                     </Link>
-                  ))}
+                  )}
               </div>
             ) : (
               <div className="acct-grid">

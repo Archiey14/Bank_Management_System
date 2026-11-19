@@ -19,6 +19,7 @@ const creditCardSchema = new mongoose.Schema(
     billingDay: { type: Number, default: CREDIT_BILLING_DAY, min: 1, max: 28 },
     // Null when nothing is owed ("Not scheduled").
     dueDate: { type: Date, default: null },
+    pinHash: { type: String, select: false },
     activatedAt: { type: Date, default: Date.now },
     blockedAt: { type: Date, default: null },
   },
@@ -27,6 +28,7 @@ const creditCardSchema = new mongoose.Schema(
     toJSON: {
       transform(doc, ret) {
         delete ret.__v;
+        delete ret.pinHash;
         ret.availableCredit = Math.max(0, ret.creditLimit - ret.outstanding);
         return ret;
       },

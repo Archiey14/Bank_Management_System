@@ -1,0 +1,10 @@
+{
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Northbank",
+        "supportEmail": "archie.cs231054@global.org.in"
+      }
+    }
+  }
+}

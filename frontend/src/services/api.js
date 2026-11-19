@@ -42,6 +42,11 @@ export const loginUser = async (data) => {
   return response.data
 }
 
+export const googleAuthUser = async (data) => {
+  const response = await API.post('/auth/google', data)
+  return response.data
+}
+
 export const getMe = async () => {
   const response = await API.get('/auth/me')
   return response.data
@@ -322,6 +327,11 @@ export const activateDebitCard = async (id, pin) => {
   return response.data
 }
 
+export const changeDebitCardPin = async (id, pin) => {
+  const response = await API.post(`/cards/debit/${id}/pin`, { pin })
+  return response.data
+}
+
 export const setDebitCardLimit = async (id, dailyAtmLimitMinor) => {
   const response = await API.patch(`/cards/debit/${id}/limit`, { dailyAtmLimitMinor })
   return response.data
@@ -332,8 +342,41 @@ export const blockDebitCard = async (id) => {
   return response.data
 }
 
+export const applyDebitCard = async (accountId) => {
+  const response = await API.post('/cards/debit-applications', { accountId })
+  return response.data
+}
+
+export const listMyDebitApplications = async () => {
+  const response = await API.get('/cards/debit-applications/mine')
+  return response.data
+}
+
+export const listDebitApplications = async (params = {}) => {
+  const query = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== '' && value !== undefined && value !== null)
+  )
+  const response = await API.get('/cards/debit-applications', { params: query })
+  return response.data
+}
+
+export const approveDebitApplication = async (id) => {
+  const response = await API.patch(`/cards/debit-applications/${id}/approve`)
+  return response.data
+}
+
+export const rejectDebitApplication = async (id, remarks) => {
+  const response = await API.patch(`/cards/debit-applications/${id}/reject`, { remarks })
+  return response.data
+}
+
 export const listCreditCards = async () => {
   const response = await API.get('/cards/credit')
+  return response.data
+}
+
+export const changeCreditCardPin = async (id, pin) => {
+  const response = await API.post(`/cards/credit/${id}/pin`, { pin })
   return response.data
 }
 

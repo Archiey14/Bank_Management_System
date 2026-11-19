@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/authStore'
 import { useTheme } from '../hooks/useTheme'
 import { useConsent } from '../context/consentStore'
@@ -24,10 +24,19 @@ const isStrongPassword = (value) =>
   /\d/.test(value) &&
   /[^A-Za-z0-9]/.test(value)
 
+const initials = (name = '') =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('') || 'NB'
+
 export default function Settings() {
   const { user, updateUser } = useAuth()
   const { theme, preference, setPreference } = useTheme()
   const { consent, openSettings } = useConsent()
+  const fileInputRef = useRef(null)
 
   // Profile state
   const [name, setName] = useState(user?.name || '')
@@ -36,6 +45,50 @@ export default function Settings() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [profileNotice, setProfileNotice] = useState('')
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Please upload a valid image file (PNG, JPG, or WebP).')
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setProfileError('Selected image is too large (maximum 8MB).')
+      return
+    }
+
+    setProfileError('')
+    const reader = new FileReader()
+    reader.onload = (loadEvent) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxDim = 320
+        let { width, height } = img
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width)
+            width = maxDim
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height)
+            height = maxDim
+          }
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
+        setAvatar(dataUrl)
+        setProfileNotice('Photo selected! Click "Save Profile Changes" below to save.')
+      }
+      img.src = loadEvent.target.result
+    }
+    reader.readAsDataURL(file)
+  }
 
   // Password state
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS)
@@ -166,38 +219,107 @@ export default function Settings() {
             </div>
 
             <div className="field">
-              <label>Profile Picture / Avatar</label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
-                {AVATAR_PRESETS.map((preset, idx) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setAvatar(preset)}
+              <label>Profile Picture</label>
+              <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt="Current profile preview"
                     style={{
-                      border: avatar === preset ? '2px solid #6468cc' : '2px solid transparent',
-                      padding: 2,
+                      width: 68,
+                      height: 68,
                       borderRadius: '50%',
-                      background: 'none',
-                      cursor: 'pointer',
+                      objectFit: 'cover',
+                      border: '2px solid var(--indigo, #4f46e5)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 68,
+                      height: 68,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.4rem',
+                      fontWeight: 700,
+                      boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
                     }}
                   >
-                    <img
-                      src={preset}
-                      alt={`Avatar option ${idx + 1}`}
-                      style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-                    />
-                  </button>
-                ))}
-                {avatar && (
-                  <button
-                    type="button"
-                    className="db-btn db-btn--outline"
-                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                    onClick={() => setAvatar('')}
-                  >
-                    Clear Avatar
-                  </button>
+                    {initials(name || user?.name)}
+                  </div>
                 )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      style={{ display: 'none' }}
+                      onChange={handleFileUpload}
+                    />
+                    <button
+                      type="button"
+                      className="db-btn db-btn--outline"
+                      style={{ height: 38, padding: '0 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <span>📷</span> Upload photo
+                    </button>
+                    {avatar && (
+                      <button
+                        type="button"
+                        className="db-btn db-btn--outline"
+                        style={{ height: 38, padding: '0 14px', fontSize: '13px', color: '#ef4444' }}
+                        onClick={() => {
+                          setAvatar('')
+                          if (fileInputRef.current) fileInputRef.current.value = ''
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <span className="field-hint" style={{ margin: 0 }}>
+                    Supports PNG, JPG or WebP. Automatically cropped and optimized.
+                  </span>
+                </div>
+              </div>
+
+              {/* Preset options */}
+              <div style={{ marginTop: 14 }}>
+                <span style={{ fontSize: '11.5px', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>
+                  Or select a preset avatar:
+                </span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {AVATAR_PRESETS.map((preset, idx) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAvatar(preset)}
+                      style={{
+                        border: avatar === preset ? '2px solid var(--indigo, #4f46e5)' : '2px solid transparent',
+                        padding: 2,
+                        borderRadius: '50%',
+                        background: 'none',
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s ease',
+                      }}
+                      title={`Select preset ${idx + 1}`}
+                    >
+                      <img
+                        src={preset}
+                        alt={`Preset ${idx + 1}`}
+                        style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

@@ -256,13 +256,13 @@ export default function Admin() {
           </div>
 
           <form
-            className="db-filters"
+            className="db-filters db-filters--inline"
             onSubmit={(e) => {
               e.preventDefault()
               loadUsers(1)
             }}
           >
-            <div className="field db-filters__wide">
+            <div className="field" style={{ flex: '1 1 220px', minWidth: 180, maxWidth: 320 }}>
               <label htmlFor="user-search">Search Name or Email</label>
               <input
                 id="user-search"
@@ -272,7 +272,7 @@ export default function Admin() {
                 onChange={(e) => setUserSearch(e.target.value)}
               />
             </div>
-            <div className="field">
+            <div className="field" style={{ flex: '0 1 150px', minWidth: 130 }}>
               <label htmlFor="user-role">Role</label>
               <select
                 id="user-role"
@@ -286,7 +286,7 @@ export default function Admin() {
                 <option value="admin">Admin</option>
               </select>
             </div>
-            <div className="field">
+            <div className="field" style={{ flex: '0 1 150px', minWidth: 130 }}>
               <label htmlFor="user-status">Status</label>
               <select
                 id="user-status"
@@ -299,7 +299,7 @@ export default function Admin() {
                 <option value="inactive">Inactive</option>
               </select>
             </div>
-            <div className="db-filters__actions">
+            <div className="field" style={{ margin: 0, alignSelf: 'flex-end' }}>
               <button type="submit" className="db-btn db-btn--primary">
                 Filter
               </button>
@@ -393,13 +393,13 @@ export default function Admin() {
           </div>
 
           <form
-            className="db-filters"
+            className="db-filters db-filters--inline"
             onSubmit={(e) => {
               e.preventDefault()
               loadLogs(1)
             }}
           >
-            <div className="field db-filters__wide">
+            <div className="field" style={{ flex: '1 1 280px', minWidth: 220, maxWidth: 440 }}>
               <label htmlFor="log-action">Filter Action Name</label>
               <input
                 id="log-action"
@@ -409,7 +409,7 @@ export default function Admin() {
                 onChange={(e) => setLogAction(e.target.value)}
               />
             </div>
-            <div className="db-filters__actions">
+            <div className="field" style={{ margin: 0, alignSelf: 'flex-end' }}>
               <button type="submit" className="db-btn db-btn--primary">
                 Search Logs
               </button>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 
 import PasswordField from '../components/PasswordField'
-import { ArrowRightIcon, TrendUpIcon } from '../components/icons'
+import { ArrowRightIcon, TrendUpIcon, GoogleIcon } from '../components/icons'
 import { useAuth } from '../context/authStore'
 
 function PanelCard() {
@@ -45,7 +45,7 @@ const maskEmail = (email = '') => {
 }
 
 export default function Login() {
-  const { login, verifyLoginOtp } = useAuth()
+  const { login, verifyLoginOtp, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
 
   // Step 1 — credentials
@@ -54,6 +54,7 @@ export default function Login() {
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [info, setInfo] = useState('')
 
   // Step 2 — email OTP (only when otpRequired is true)
@@ -150,6 +151,26 @@ export default function Login() {
       }
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setError('')
+    setGoogleLoading(true)
+    try {
+      const user = await signInWithGoogle(remember)
+      if (user.role === 'admin') navigate('/admin')
+      else if (user.role === 'staff') navigate('/staff')
+      else navigate('/dashboard')
+    } catch (err) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        return
+      }
+      setError(
+        err.response?.data?.message || err.message || 'Google sign-in failed. Please try again.'
+      )
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -259,9 +280,23 @@ export default function Login() {
               </Link>
             </div>
 
-            <button type="submit" className="btn-primary" disabled={submitting}>
+            <button type="submit" className="btn-primary" disabled={submitting || googleLoading}>
               {submitting ? 'Signing in…' : 'Sign in'}
               <ArrowRightIcon />
+            </button>
+
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+
+            <button
+              type="button"
+              className="btn-google"
+              onClick={handleGoogleSignIn}
+              disabled={submitting || googleLoading}
+            >
+              <GoogleIcon />
+              <span>{googleLoading ? 'Connecting to Google…' : 'Sign in with Google'}</span>
             </button>
 
             <p className="auth-switch">

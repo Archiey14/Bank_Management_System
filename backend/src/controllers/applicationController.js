@@ -55,8 +55,11 @@ const createApplication = asyncHandler(async (req, res) => {
   if (!PHONE_PATTERN.test(phone)) {
     throw new AppError("Enter a valid 10-digit Indian mobile number", 400);
   }
-  const pan = requireString(body.pan, "PAN", { max: 10 }).toUpperCase();
-  if (!PAN_PATTERN.test(pan)) throw new AppError("Enter a valid PAN (e.g. ABCDE1234F)", 400);
+  let pan = "DOC_ATTACHED";
+  if (body.pan !== undefined && body.pan !== null && String(body.pan).trim() !== "") {
+    pan = String(body.pan).trim().toUpperCase();
+    if (!PAN_PATTERN.test(pan)) throw new AppError("Enter a valid PAN (e.g. ABCDE1234F)", 400);
+  }
 
   const address = body.address ?? {};
   const line1 = requireString(address.line1, "Address line 1");
@@ -85,6 +88,14 @@ const createApplication = asyncHandler(async (req, res) => {
   const initialDepositRaw = body.initialDepositMinor ?? 0;
   const initialDepositMinor = initialDepositRaw === 0 ? 0 : parseAmountMinor(initialDepositRaw);
 
+  const rawDocs = body.documents && typeof body.documents === "object" ? body.documents : {};
+  const documents = {
+    panCard: typeof rawDocs.panCard === "string" ? rawDocs.panCard.trim() : "",
+    aadhaarCard: typeof rawDocs.aadhaarCard === "string" ? rawDocs.aadhaarCard.trim() : "",
+    photograph: typeof rawDocs.photograph === "string" ? rawDocs.photograph.trim() : "",
+    signature: typeof rawDocs.signature === "string" ? rawDocs.signature.trim() : "",
+  };
+
   const existingPending = await AccountApplication.findOne({
     user: req.user._id,
     status: "pending",
@@ -112,6 +123,7 @@ const createApplication = asyncHandler(async (req, res) => {
         nomineeName,
         nomineeRelation,
         initialDepositMinor,
+        documents,
       });
       break;
     } catch (error) {

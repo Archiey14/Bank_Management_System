@@ -481,7 +481,16 @@ export default function Dashboard() {
               </div>
 
               <div className="db-profile">
-                <span className="db-avatar db-avatar--lg">{initials(user?.name)}</span>
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="db-avatar db-avatar--lg"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span className="db-avatar db-avatar--lg">{initials(user?.name)}</span>
+                )}
                 <div className="db-profile__info">
                   <div className="db-profile__name">{user?.name}</div>
                   <div className="db-profile__email">{user?.email}</div>

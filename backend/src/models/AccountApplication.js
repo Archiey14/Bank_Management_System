@@ -34,8 +34,7 @@ const applicationSchema = new mongoose.Schema(
     },
     pan: {
       type: String,
-      required: [true, "PAN is required"],
-      match: [/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid PAN (e.g. ABCDE1234F)"],
+      default: "DOC_ATTACHED",
       uppercase: true,
       trim: true,
     },
@@ -61,6 +60,13 @@ const applicationSchema = new mongoose.Schema(
     },
     nomineeName: { type: String, trim: true, maxlength: 80, default: "" },
     nomineeRelation: { type: String, trim: true, maxlength: 40, default: "" },
+    // Uploaded KYC documents (stored as compressed base64 data URLs)
+    documents: {
+      panCard: { type: String, default: "" },
+      aadhaarCard: { type: String, default: "" },
+      photograph: { type: String, default: "" },
+      signature: { type: String, default: "" },
+    },
     // Optional first funding, credited when staff approves the application.
     initialDepositMinor: {
       type: Number,

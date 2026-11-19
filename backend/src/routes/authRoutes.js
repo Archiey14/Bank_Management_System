@@ -4,6 +4,7 @@ const {
   passwordResetLimiter,
   register,
   login,
+  googleLogin,
   verifyLoginOtp,
   getMe,
   updateProfile,
@@ -19,6 +20,7 @@ const router = express.Router();
 
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
+router.post("/google", authLimiter, googleLogin);
 // Second step of sign-in: exchange the otpToken from /login for a session.
 router.post("/otp/verify", authLimiter, verifyLoginOtp);
 router.get("/me", authMiddleware, getMe);

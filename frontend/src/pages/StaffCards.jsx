@@ -3,9 +3,12 @@ import AppShell, { PageHeader } from '../components/AppShell'
 import Modal from '../components/Modal'
 import {
   approveCreditApplication,
+  approveDebitApplication,
   listBlockedCards,
   listCreditApplications,
+  listDebitApplications,
   rejectCreditApplication,
+  rejectDebitApplication,
   setStaffCardStatus,
 } from '../services/api'
 import { formatRupees, toMinorUnits } from '../utils/money'
@@ -25,7 +28,7 @@ const STATUS_TABS = [
 ]
 
 export default function StaffCards() {
-  const [view, setView] = useState('applications') // 'applications' | 'blocked'
+  const [view, setView] = useState('debit_apps') // 'debit_apps' | 'credit_apps' | 'blocked'
   const [status, setStatus] = useState('pending')
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
@@ -36,7 +39,7 @@ export default function StaffCards() {
   const [reloadKey, setReloadKey] = useState(0)
   const [notice, setNotice] = useState('')
 
-  const [review, setReview] = useState(null) // { kind: 'approve' | 'reject', application }
+  const [review, setReview] = useState(null) // { kind: 'approve' | 'reject', application, type: 'debit' | 'credit' }
   const [limitInput, setLimitInput] = useState('')
   const [remarks, setRemarks] = useState('')
   const [busy, setBusy] = useState(false)
@@ -44,14 +47,22 @@ export default function StaffCards() {
 
   useEffect(() => {
     let active = true
-    const request =
-      view === 'applications'
-        ? listCreditApplications({ status, q: query }).then((data) => {
-            if (active) setApplications(data.applications)
-          })
-        : listBlockedCards().then((data) => {
-            if (active) setBlocked({ debitCards: data.debitCards, creditCards: data.creditCards })
-          })
+    let request
+
+    if (view === 'debit_apps') {
+      request = listDebitApplications({ status, q: query }).then((data) => {
+        if (active) setApplications(data.applications || [])
+      })
+    } else if (view === 'credit_apps') {
+      request = listCreditApplications({ status, q: query }).then((data) => {
+        if (active) setApplications(data.applications || [])
+      })
+    } else {
+      request = listBlockedCards().then((data) => {
+        if (active) setBlocked({ debitCards: data.debitCards, creditCards: data.creditCards })
+      })
+    }
+
     request
       .then(() => {
         if (active) setLoadError('')
@@ -76,11 +87,13 @@ export default function StaffCards() {
     setView(next)
   }
 
-  const openReview = (kind, application) => {
-    setReview({ kind, application })
+  const openReview = (kind, application, type) => {
+    setReview({ kind, application, type })
     setReviewError('')
     setRemarks('')
-    setLimitInput(String(application.requestedLimit / 100))
+    if (type === 'credit') {
+      setLimitInput(String((application.requestedLimit || 0) / 100))
+    }
   }
 
   const submitReview = async (event) => {
@@ -88,23 +101,43 @@ export default function StaffCards() {
     setReviewError('')
     setBusy(true)
     try {
-      if (review.kind === 'approve') {
-        const minor = toMinorUnits(limitInput)
-        if (!minor) {
-          setReviewError('Enter the credit limit to approve.')
-          setBusy(false)
-          return
+      if (review.type === 'debit') {
+        if (review.kind === 'approve') {
+          const res = await approveDebitApplication(review.application._id)
+          setNotice(
+            `Approved ${review.application.applicationNumber} — card issued and approval email with generated PIN (${res.generatedPin || 'sent'}) delivered to ${review.application.user?.email || 'customer'}.`
+          )
+        } else {
+          if (remarks.trim().length < 3) {
+            setReviewError('Add remarks so the customer knows why (at least 3 characters).')
+            setBusy(false)
+            return
+          }
+          await rejectDebitApplication(review.application._id, remarks.trim())
+          setNotice(`Rejected ${review.application.applicationNumber}.`)
         }
-        await approveCreditApplication(review.application._id, minor)
-        setNotice(`Approved ${review.application.applicationNumber} — card issued.`)
       } else {
-        if (remarks.trim().length < 3) {
-          setReviewError('Add remarks so the customer knows why (at least 3 characters).')
-          setBusy(false)
-          return
+        // Credit card application review
+        if (review.kind === 'approve') {
+          const minor = toMinorUnits(limitInput)
+          if (!minor) {
+            setReviewError('Enter the credit limit to approve.')
+            setBusy(false)
+            return
+          }
+          const res = await approveCreditApplication(review.application._id, minor)
+          setNotice(
+            `Approved ${review.application.applicationNumber} — credit card issued with PIN (${res.generatedPin || 'sent'}) and approval email delivered to ${review.application.user?.email || 'customer'}.`
+          )
+        } else {
+          if (remarks.trim().length < 3) {
+            setReviewError('Add remarks so the customer knows why (at least 3 characters).')
+            setBusy(false)
+            return
+          }
+          await rejectCreditApplication(review.application._id, remarks.trim())
+          setNotice(`Rejected ${review.application.applicationNumber}.`)
         }
-        await rejectCreditApplication(review.application._id, remarks.trim())
-        setNotice(`Rejected ${review.application.applicationNumber}.`)
       }
       setReview(null)
       refresh()
@@ -133,17 +166,26 @@ export default function StaffCards() {
     <AppShell>
       <PageHeader
         eyebrow="Operations"
-        title="Card desk"
-        sub="Review credit card applications and release cards that customers or staff have blocked."
+        title="Card Desk"
+        sub="Review debit & credit card applications, issue cards with hexadecimal PINs, and release blocked cards."
       />
 
       <div className="seg-tabs" role="tablist" aria-label="Card desk sections">
         <button
           type="button"
           role="tab"
-          aria-selected={view === 'applications'}
-          className={view === 'applications' ? 'is-active' : ''}
-          onClick={() => switchView('applications')}
+          aria-selected={view === 'debit_apps'}
+          className={view === 'debit_apps' ? 'is-active' : ''}
+          onClick={() => switchView('debit_apps')}
+        >
+          Debit card applications
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'credit_apps'}
+          className={view === 'credit_apps' ? 'is-active' : ''}
+          onClick={() => switchView('credit_apps')}
         >
           Credit card applications
         </button>
@@ -169,12 +211,17 @@ export default function StaffCards() {
         </div>
       )}
 
-      {view === 'applications' && (
+      {(view === 'debit_apps' || view === 'credit_apps') && (
         <section className="db-card" style={{ marginTop: 20 }}>
           <div className="db-card__head">
             <div>
-              <h2 className="db-card__title">Applications</h2>
-              <p className="db-card__sub">Approving an application issues the card immediately.</p>
+              <h2 className="db-card__title">
+                {view === 'debit_apps' ? 'Debit Card Applications' : 'Credit Card Applications'}
+              </h2>
+              <p className="db-card__sub">
+                Approving an application automatically generates a hexadecimal PIN, issues the card, and emails the
+                customer.
+              </p>
             </div>
           </div>
 
@@ -220,8 +267,8 @@ export default function StaffCards() {
             <div className="db-loading">Loading applications…</div>
           ) : applications.length === 0 ? (
             <div className="db-empty">
-              <div className="db-empty__title">No applications here</div>
-              <p className="db-empty__text">Nothing matches the current filter.</p>
+              <div className="db-empty__title">No applications found</div>
+              <p className="db-empty__text">Nothing matches the current filter or search criteria.</p>
             </div>
           ) : (
             <div className="db-table-wrap">
@@ -231,8 +278,14 @@ export default function StaffCards() {
                     <th>Reference</th>
                     <th>Customer</th>
                     <th>Submitted</th>
-                    <th className="num">Requested</th>
-                    <th className="num">Approved</th>
+                    {view === 'debit_apps' ? (
+                      <th>Linked Account</th>
+                    ) : (
+                      <>
+                        <th className="num">Requested Limit</th>
+                        <th className="num">Approved Limit</th>
+                      </>
+                    )}
                     <th>Status</th>
                     <th />
                   </tr>
@@ -240,16 +293,28 @@ export default function StaffCards() {
                 <tbody>
                   {applications.map((application) => (
                     <tr key={application._id}>
-                      <td>{application.applicationNumber}</td>
+                      <td>
+                        <strong>{application.applicationNumber}</strong>
+                      </td>
                       <td>
                         <div className="db-table__title">{application.user?.name || 'Unknown'}</div>
                         <div className="db-table__sub">{application.user?.email}</div>
                       </td>
                       <td>{formatDate(application.createdAt)}</td>
-                      <td className="num">{formatRupees(application.requestedLimit)}</td>
-                      <td className="num">
-                        {application.approvedLimit ? formatRupees(application.approvedLimit) : '—'}
-                      </td>
+                      {view === 'debit_apps' ? (
+                        <td>
+                          {application.account
+                            ? `${ACCOUNT_TYPE_LABELS[application.account.type] || application.account.type} •••• ${last4(application.account.accountNumber)}`
+                            : '—'}
+                        </td>
+                      ) : (
+                        <>
+                          <td className="num">{formatRupees(application.requestedLimit)}</td>
+                          <td className="num">
+                            {application.approvedLimit ? formatRupees(application.approvedLimit) : '—'}
+                          </td>
+                        </>
+                      )}
                       <td>
                         <span className={`pill pill--${application.status}`}>
                           {APPLICATION_STATUS_LABELS[application.status] || application.status}
@@ -262,14 +327,18 @@ export default function StaffCards() {
                             <button
                               type="button"
                               className="db-btn db-btn--primary"
-                              onClick={() => openReview('approve', application)}
+                              onClick={() =>
+                                openReview('approve', application, view === 'debit_apps' ? 'debit' : 'credit')
+                              }
                             >
                               Approve
                             </button>
                             <button
                               type="button"
                               className="db-btn db-btn--outline"
-                              onClick={() => openReview('reject', application)}
+                              onClick={() =>
+                                openReview('reject', application, view === 'debit_apps' ? 'debit' : 'credit')
+                              }
                             >
                               Reject
                             </button>
@@ -291,8 +360,8 @@ export default function StaffCards() {
             <div>
               <h2 className="db-card__title">Blocked cards</h2>
               <p className="db-card__sub">
-                Customers can block a card themselves; only staff can release it. A debit card that was never
-                activated returns to “inactive” so the customer still sets a PIN.
+                Customers can block a card themselves; only staff can release it. A debit card that was never activated
+                returns to “inactive” so the customer still sets a PIN.
               </p>
             </div>
           </div>
@@ -362,8 +431,12 @@ export default function StaffCards() {
 
       {review && (
         <Modal
-          title={review.kind === 'approve' ? 'Approve application' : 'Reject application'}
-          sub={`${review.application.applicationNumber} · ${review.application.user?.name || 'Customer'} requested ${formatRupees(review.application.requestedLimit)}`}
+          title={
+            review.kind === 'approve'
+              ? `Approve ${review.type === 'debit' ? 'Debit' : 'Credit'} Card Application`
+              : `Reject ${review.type === 'debit' ? 'Debit' : 'Credit'} Card Application`
+          }
+          sub={`${review.application.applicationNumber} · Customer: ${review.application.user?.name || 'Customer'} (${review.application.user?.email || ''})`}
           onClose={() => {
             if (!busy) setReview(null)
           }}
@@ -371,19 +444,31 @@ export default function StaffCards() {
         >
           <form className="db-form" onSubmit={submitReview} style={{ marginTop: 0 }}>
             {review.kind === 'approve' ? (
-              <div className="field">
-                <label htmlFor="review-limit">Approved credit limit (₹)</label>
-                <input
-                  id="review-limit"
-                  className="input"
-                  type="text"
-                  inputMode="decimal"
-                  value={limitInput}
-                  onChange={(event) => setLimitInput(event.target.value)}
-                  autoFocus
-                />
-                <div className="field-hint">Between ₹5,000 and ₹5,00,000. You can approve less than requested.</div>
-              </div>
+              review.type === 'credit' ? (
+                <div className="field">
+                  <label htmlFor="review-limit">Approved credit limit (₹)</label>
+                  <input
+                    id="review-limit"
+                    className="input"
+                    type="text"
+                    inputMode="decimal"
+                    value={limitInput}
+                    onChange={(event) => setLimitInput(event.target.value)}
+                    autoFocus
+                  />
+                  <div className="field-hint">
+                    Between ₹5,000 and ₹5,00,000. An automated approval email with a generated hexadecimal PIN will be sent to the customer.
+                  </div>
+                </div>
+              ) : (
+                <div className="field">
+                  <p className="db-note" style={{ marginTop: 0 }}>
+                    Approving will immediately issue and activate this debit card linked to account ending in ••••{' '}
+                    {last4(review.application.account?.accountNumber || '')}. A random 4-character hexadecimal PIN
+                    will be generated and dispatched to <strong>{review.application.user?.email}</strong> via email.
+                  </p>
+                </div>
+              )
             ) : (
               <div className="field">
                 <label htmlFor="review-remarks">Remarks for the customer</label>
@@ -391,6 +476,7 @@ export default function StaffCards() {
                   id="review-remarks"
                   className="input db-textarea"
                   maxLength={280}
+                  placeholder="State the reason for rejecting this application..."
                   value={remarks}
                   onChange={(event) => setRemarks(event.target.value)}
                   autoFocus
@@ -404,9 +490,14 @@ export default function StaffCards() {
             )}
             <div className="db-form__actions">
               <button type="submit" className="db-btn db-btn--primary" disabled={busy}>
-                {busy ? 'Saving…' : review.kind === 'approve' ? 'Approve & issue card' : 'Reject application'}
+                {busy ? 'Processing…' : review.kind === 'approve' ? 'Approve & Issue with PIN' : 'Reject Application'}
               </button>
-              <button type="button" className="db-btn db-btn--outline" onClick={() => setReview(null)} disabled={busy}>
+              <button
+                type="button"
+                className="db-btn db-btn--outline"
+                onClick={() => setReview(null)}
+                disabled={busy}
+              >
                 Cancel
               </button>
             </div>

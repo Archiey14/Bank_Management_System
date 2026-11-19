@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
-import { getMe, loginUser, verifyLoginOtp as verifyLoginOtpApi, logoutUser, registerUser } from '../services/api'
+import {
+  getMe,
+  loginUser,
+  verifyLoginOtp as verifyLoginOtpApi,
+  logoutUser,
+  registerUser,
+  googleAuthUser,
+} from '../services/api'
 import { AuthContext } from './authStore'
+import { signInWithPopup } from 'firebase/auth'
+import { auth, googleProvider } from '../config/firebase'
 
 // Token and user object can live in either storage depending on "Remember me".
 // We check localStorage first, then sessionStorage, so only one is ever set.
@@ -94,6 +103,19 @@ export function AuthProvider({ children }) {
     return startSession(data, true)
   }
 
+  const signInWithGoogle = async (remember = true) => {
+    const result = await signInWithPopup(auth, googleProvider)
+    const idToken = await result.user.getIdToken()
+    const data = await googleAuthUser({
+      idToken,
+      email: result.user.email,
+      name: result.user.displayName,
+      photoURL: result.user.photoURL,
+      googleUid: result.user.uid,
+    })
+    return startSession(data, remember)
+  }
+
   const logout = async () => {
     await logoutUser()
     clearStorage()
@@ -110,7 +132,17 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, verifyLoginOtp, register, logout, updateUser }}
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        verifyLoginOtp,
+        register,
+        signInWithGoogle,
+        logout,
+        updateUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
