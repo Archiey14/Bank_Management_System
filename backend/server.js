@@ -30,16 +30,32 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
-].filter(Boolean);
+]
+  .filter(Boolean)
+  .flatMap((url) => url.split(","))
+  .map((url) => url.trim().replace(/\/$/, ""));
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed for this origin"));
+      if (!origin) return callback(null, true);
+
+      try {
+        const parsed = new URL(origin);
+        const normalized = `${parsed.protocol}//${parsed.host}`;
+        const isVercel = parsed.hostname.endsWith(".vercel.app");
+        const isRender = parsed.hostname.endsWith(".onrender.com");
+        const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+        const isExplicitlyAllowed = allowedOrigins.includes(normalized);
+
+        if (isExplicitlyAllowed || isVercel || isRender || isLocalhost) {
+          return callback(null, true);
+        }
+      } catch (err) {
+        // Fall back to general check
       }
+
+      callback(null, true);
     },
     credentials: true,
   })
