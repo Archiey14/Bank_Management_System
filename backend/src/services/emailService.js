@@ -19,9 +19,10 @@ const hasSmtpConfig = () =>
 
 // Send via HTTPS API (Port 443) to bypass cloud firewall restrictions (e.g. Render free tier blocks ports 25, 465, 587)
 const sendViaHttpApi = async ({ to, subject, html, text }) => {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
   if (!apiKey) return null;
-  const from = process.env.EMAIL_FROM || "Northbank Security <onboarding@resend.dev>";
+  // Note: Resend requires 'onboarding@resend.dev' unless a custom domain is verified
+  const from = process.env.RESEND_FROM || "Northbank <onboarding@resend.dev>";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
