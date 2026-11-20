@@ -168,7 +168,6 @@ export function AuthProvider({ children }) {
         otpRequired: true,
         otpToken: data.otpToken,
         remember,
-        devOtpCode: data.devOtpCode,
       }
     }
     return { otpRequired: false, user: startSession(data, remember) }

@@ -183,19 +183,6 @@ const login = async (req, res, next) => {
       otpToken,
     };
 
-    // If SMTP email delivery failed or was blocked by cloud host firewall (Render free tier),
-    // provide devOtpCode fallback so users and evaluators are never locked out of their bank accounts!
-    if (
-      !hasSmtpConfig() ||
-      emailResult?.devCode ||
-      emailResult?.deliveryError ||
-      !emailResult?.messageId ||
-      String(emailResult?.messageId).includes("dev-") ||
-      String(emailResult?.messageId).includes("fallback-")
-    ) {
-      responsePayload.devOtpCode = code;
-    }
-
     return res.status(200).json(responsePayload);
   } catch (error) {
     next(error);
