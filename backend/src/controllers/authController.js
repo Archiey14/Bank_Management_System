@@ -338,11 +338,13 @@ const forgotPassword = async (req, res, next) => {
     const resetUrl = `${clientUrl.replace(/\/$/, "")}/reset-password/${resetToken}`;
 
     let emailSent = false;
+    let emailDeliveryError = null;
     try {
       await sendPasswordResetEmail({ to: user.email, resetUrl });
       logger.info("Reset email successfully submitted to SMTP");
       emailSent = true;
     } catch (err) {
+      emailDeliveryError = err.message;
       logger.error("Email delivery failure: " + err.message);
       if (process.env.NODE_ENV === "test") {
         user.resetPasswordToken = undefined;
@@ -363,6 +365,9 @@ const forgotPassword = async (req, res, next) => {
     // provide the direct reset URL so real users/evaluators are never stranded:
     if (!hasSmtpConfig() || !emailSent) {
       responseData.resetUrl = resetUrl;
+      if (emailDeliveryError) {
+        responseData.emailError = emailDeliveryError;
+      }
     }
 
     return res.status(200).json(responseData);

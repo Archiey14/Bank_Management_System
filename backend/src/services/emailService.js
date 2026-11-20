@@ -28,14 +28,24 @@ const getTransporter = () => {
   const user = (process.env.EMAIL_USER || process.env.SMTP_USER || "").trim();
   const pass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || "").replace(/\s+/g, "");
 
+  if (host === "smtp.gmail.com" || host.includes("gmail")) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: user && pass ? { user, pass } : undefined,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+    });
+  }
+
   return nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: user && pass ? { user, pass } : undefined,
-    connectionTimeout: 6000,
-    greetingTimeout: 6000,
-    socketTimeout: 10000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
 };
 
