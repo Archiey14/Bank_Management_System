@@ -359,15 +359,12 @@ const forgotPassword = async (req, res, next) => {
 
     const responseData = {
       ...genericResponse,
+      resetToken,
+      resetUrl,
     };
 
-    // If SMTP is not configured or failed to deliver in live/dev environments,
-    // provide the direct reset URL so real users/evaluators are never stranded:
-    if (!hasSmtpConfig() || !emailSent) {
-      responseData.resetUrl = resetUrl;
-      if (emailDeliveryError) {
-        responseData.emailError = emailDeliveryError;
-      }
+    if (emailDeliveryError) {
+      responseData.emailError = emailDeliveryError;
     }
 
     return res.status(200).json(responseData);
