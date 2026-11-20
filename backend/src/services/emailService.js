@@ -58,9 +58,9 @@ const getTransporter = () => {
     return nodemailer.createTransport({
       service: "gmail",
       auth: user && pass ? { user, pass } : undefined,
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000,
     });
   }
 
@@ -69,9 +69,9 @@ const getTransporter = () => {
     port,
     secure: port === 465,
     auth: user && pass ? { user, pass } : undefined,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000,
   });
 };
 
