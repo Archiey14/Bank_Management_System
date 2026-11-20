@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 
 import PasswordField from '../components/PasswordField'
@@ -47,6 +47,19 @@ const maskEmail = (email = '') => {
 export default function Login() {
   const { login, verifyLoginOtp, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  // Calculate intended route after login (preserving target path from ProtectedRoute)
+  const destinationAfterLogin = (loggedInUser) => {
+    const fromPath = location.state?.from?.pathname
+    if (fromPath && fromPath !== '/login' && fromPath !== '/signup') {
+      return fromPath
+    }
+    if (loggedInUser?.role === 'admin') return '/admin'
+    if (loggedInUser?.role === 'staff') return '/staff'
+    return '/dashboard'
+  }
 
   // Step 1 — credentials
   const [email, setEmail] = useState('')
@@ -56,6 +69,16 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [info, setInfo] = useState('')
+
+  // Handle session expiration notices
+  useEffect(() => {
+    const reason = searchParams.get('expired')
+    if (reason === 'inactivity') {
+      setError('Your session ended after 30 minutes of inactivity for your security.')
+    } else if (reason === 'true') {
+      setError('Your session has expired. Please sign in again.')
+    }
+  }, [searchParams])
 
   // Step 2 — email OTP (only when otpRequired is true)
   const [otpToken, setOtpToken] = useState(null)
@@ -104,7 +127,7 @@ export default function Login() {
         }
         return
       }
-      navigate('/dashboard')
+      navigate(destinationAfterLogin(result.user), { replace: true })
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password.')
     } finally {
@@ -147,8 +170,8 @@ export default function Login() {
 
     try {
       setSubmitting(true)
-      await verifyLoginOtp(otpToken, value, otpRemember)
-      navigate('/dashboard')
+      const user = await verifyLoginOtp(otpToken, value, otpRemember)
+      navigate(destinationAfterLogin(user), { replace: true })
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.message || 'Could not verify your code. Try again.'
@@ -173,9 +196,7 @@ export default function Login() {
     setGoogleLoading(true)
     try {
       const user = await signInWithGoogle(remember)
-      if (user.role === 'admin') navigate('/admin')
-      else if (user.role === 'staff') navigate('/staff')
-      else navigate('/dashboard')
+      navigate(destinationAfterLogin(user), { replace: true })
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user') {
         return

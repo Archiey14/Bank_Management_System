@@ -40,13 +40,21 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      const hasToken = localStorage.getItem('token') || sessionStorage.getItem('token')
-      if (hasToken) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        sessionStorage.removeItem('token')
-        sessionStorage.removeItem('user')
-        window.location.href = '/login'
+      const isAuthUrl =
+        error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/auth/register') ||
+        error.config?.url?.includes('/auth/otp') ||
+        error.config?.url?.includes('/auth/google')
+
+      if (!isAuthUrl) {
+        const hasToken = localStorage.getItem('token') || sessionStorage.getItem('token')
+        if (hasToken) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          sessionStorage.removeItem('token')
+          sessionStorage.removeItem('user')
+          window.location.href = '/login?expired=true'
+        }
       }
     }
     return Promise.reject(error)

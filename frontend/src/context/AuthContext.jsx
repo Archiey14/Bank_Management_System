@@ -33,9 +33,24 @@ const clearStorage = () => {
   sessionStorage.removeItem('user')
 }
 
+// Inspect token expiration before making network calls
+const isTokenExpired = (tokenString) => {
+  if (!tokenString || typeof tokenString !== 'string') return true
+  try {
+    const parts = tokenString.split('.')
+    if (parts.length < 2) return false
+    const payload = JSON.parse(atob(parts[1]))
+    if (payload.exp) {
+      return payload.exp * 1000 <= Date.now()
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    // A corrupted value (e.g. the text "undefined") must not crash the app.
     try {
       const saved = readStorage('user')
       return saved ? JSON.parse(saved) : null
@@ -44,17 +59,30 @@ export function AuthProvider({ children }) {
       return null
     }
   })
-  const [token, setToken] = useState(() => readStorage('token'))
+  const [token, setToken] = useState(() => {
+    const savedToken = readStorage('token')
+    if (isTokenExpired(savedToken)) {
+      clearStorage()
+      return null
+    }
+    return savedToken
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const initAuth = async () => {
       const savedToken = readStorage('token')
       if (savedToken) {
+        if (isTokenExpired(savedToken)) {
+          clearStorage()
+          setUser(null)
+          setToken(null)
+          setLoading(false)
+          return
+        }
         try {
           const data = await getMe()
           setUser(data.user)
-          // Keep the same storage the token is already in.
           const persist = Boolean(localStorage.getItem('token'))
           writeStorage('user', JSON.stringify(data.user), persist)
         } catch {
@@ -68,6 +96,56 @@ export function AuthProvider({ children }) {
 
     initAuth()
   }, [])
+
+  // 1. Cross-tab session synchronization (sync login/logout across multiple tabs)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'token') {
+        if (!e.newValue) {
+          setUser(null)
+          setToken(null)
+        } else {
+          setToken(e.newValue)
+          getMe()
+            .then((data) => setUser(data.user))
+            .catch(() => {
+              clearStorage()
+              setUser(null)
+              setToken(null)
+            })
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  // 2. Financial session inactivity auto-logout (30 minutes of idle time)
+  useEffect(() => {
+    if (!token) return
+
+    let idleTimer
+    const INACTIVITY_MS = 30 * 60 * 1000
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => {
+        clearStorage()
+        setUser(null)
+        setToken(null)
+        window.location.href = '/login?expired=inactivity'
+      }, INACTIVITY_MS)
+    }
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
+    events.forEach((ev) => window.addEventListener(ev, resetIdleTimer, { passive: true }))
+    resetIdleTimer()
+
+    return () => {
+      clearTimeout(idleTimer)
+      events.forEach((ev) => window.removeEventListener(ev, resetIdleTimer))
+    }
+  }, [token])
 
   // persist = true  → localStorage  (remembered across browser restarts)
   // persist = false → sessionStorage (cleared when the tab closes)
