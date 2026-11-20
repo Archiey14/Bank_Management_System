@@ -7,30 +7,49 @@ import { ThemeProvider } from './context/ThemeContext'
 import CookieConsent from './components/CookieConsent'
 import ProtectedRoute from './components/ProtectedRoute'
 
-// Eagerly loaded for instant first paint
+// Eagerly loaded for instant first paint and robust auth flows
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
-// Code-split / lazy loaded routes (downloaded only when accessed)
-const Terms = lazy(() => import('./pages/Terms'))
-const Privacy = lazy(() => import('./pages/Privacy'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Accounts = lazy(() => import('./pages/Accounts'))
-const Apply = lazy(() => import('./pages/Apply'))
-const FixedDeposits = lazy(() => import('./pages/FixedDeposits'))
-const Staff = lazy(() => import('./pages/Staff'))
-const Admin = lazy(() => import('./pages/Admin'))
-const Transactions = lazy(() => import('./pages/Transactions'))
-const Transfers = lazy(() => import('./pages/Transfers'))
-const DebitCards = lazy(() => import('./pages/DebitCards'))
-const CreditCards = lazy(() => import('./pages/CreditCards'))
-const CreditCardApplication = lazy(() => import('./pages/CreditCardApplication'))
-const Deposits = lazy(() => import('./pages/Deposits'))
-const StaffCards = lazy(() => import('./pages/StaffCards'))
-const Settings = lazy(() => import('./pages/Settings'))
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
-const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+// Resilient lazy-loader that recovers from stale deployment chunk caches
+function lazyRetry(componentImport) {
+  return lazy(async () => {
+    try {
+      return await componentImport()
+    } catch (error) {
+      if (typeof window !== 'undefined') {
+        const key = 'chunk_retry_' + window.location.pathname
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, 'true')
+          window.location.reload()
+          return new Promise(() => {})
+        }
+      }
+      throw error
+    }
+  })
+}
+
+// Code-split / lazy loaded routes (downloaded on demand)
+const Terms = lazyRetry(() => import('./pages/Terms'))
+const Privacy = lazyRetry(() => import('./pages/Privacy'))
+const Dashboard = lazyRetry(() => import('./pages/Dashboard'))
+const Accounts = lazyRetry(() => import('./pages/Accounts'))
+const Apply = lazyRetry(() => import('./pages/Apply'))
+const FixedDeposits = lazyRetry(() => import('./pages/FixedDeposits'))
+const Staff = lazyRetry(() => import('./pages/Staff'))
+const Admin = lazyRetry(() => import('./pages/Admin'))
+const Transactions = lazyRetry(() => import('./pages/Transactions'))
+const Transfers = lazyRetry(() => import('./pages/Transfers'))
+const DebitCards = lazyRetry(() => import('./pages/DebitCards'))
+const CreditCards = lazyRetry(() => import('./pages/CreditCards'))
+const CreditCardApplication = lazyRetry(() => import('./pages/CreditCardApplication'))
+const Deposits = lazyRetry(() => import('./pages/Deposits'))
+const StaffCards = lazyRetry(() => import('./pages/StaffCards'))
+const Settings = lazyRetry(() => import('./pages/Settings'))
 
 const PageLoader = () => (
   <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
