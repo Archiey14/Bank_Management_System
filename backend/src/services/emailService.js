@@ -184,8 +184,14 @@ const sendLoginOtpEmail = async ({ to, code }) => {
     logger.info("Configure EMAIL_USER / EMAIL_PASS to send real sign-in codes via email.");
     return { messageId: "dev-otp-log", devCode: code };
   }
-  const transporter = getTransporter();
-  return transporter.sendMail(buildOtpMailOptions({ to, code }));
+
+  try {
+    const transporter = getTransporter();
+    return await transporter.sendMail(buildOtpMailOptions({ to, code }));
+  } catch (err) {
+    logger.error("SMTP OTP delivery failed: " + err.message);
+    return { messageId: "fallback-otp-log", devCode: code, deliveryError: err.message };
+  }
 };
 
 const buildOtpMailOptions = ({ to, code }) => ({

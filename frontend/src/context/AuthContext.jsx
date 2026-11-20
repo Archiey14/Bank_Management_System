@@ -86,7 +86,12 @@ export function AuthProvider({ children }) {
   const login = async (email, password, remember = true) => {
     const data = await loginUser({ email, password })
     if (data.otpRequired) {
-      return { otpRequired: true, otpToken: data.otpToken, remember }
+      return {
+        otpRequired: true,
+        otpToken: data.otpToken,
+        remember,
+        devOtpCode: data.devOtpCode,
+      }
     }
     return { otpRequired: false, user: startSession(data, remember) }
   }

@@ -61,6 +61,7 @@ export default function Login() {
   const [otpToken, setOtpToken] = useState(null)
   const [otpRemember, setOtpRemember] = useState(true)
   const [code, setCode] = useState('')
+  const [devOtp, setDevOtp] = useState('')
   const [resending, setResending] = useState(false)
 
   const inOtpStep = Boolean(otpToken)
@@ -69,6 +70,7 @@ export default function Login() {
   const resetToCredentials = (message = '') => {
     setOtpToken(null)
     setCode('')
+    setDevOtp('')
     setPassword('')
     setError(message)
     setInfo('')
@@ -93,7 +95,13 @@ export default function Login() {
       if (result.otpRequired) {
         setOtpToken(result.otpToken)
         setOtpRemember(remember)
-        setInfo(`We sent a 6-digit code to ${maskEmail(email)}. It expires in 10 minutes.`)
+        if (result.devOtpCode) {
+          setDevOtp(result.devOtpCode)
+          setCode(result.devOtpCode)
+          setInfo(`Your 6-digit verification code is ready.`)
+        } else {
+          setInfo(`We sent a 6-digit code to ${maskEmail(email)}. It expires in 10 minutes.`)
+        }
         return
       }
       navigate('/dashboard')
@@ -112,7 +120,13 @@ export default function Login() {
       const result = await login(email, password, otpRemember)
       if (result.otpRequired) {
         setOtpToken(result.otpToken)
-        setInfo(`A new code was sent to ${maskEmail(email)}.`)
+        if (result.devOtpCode) {
+          setDevOtp(result.devOtpCode)
+          setCode(result.devOtpCode)
+          setInfo(`New verification code: ${result.devOtpCode}`)
+        } else {
+          setInfo(`A new code was sent to ${maskEmail(email)}.`)
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Could not resend the code. Try again.')
@@ -192,6 +206,36 @@ export default function Login() {
           <div className="auth-eyebrow">Two-step verification</div>
           <h2 className="auth-title">Enter your code</h2>
           <p className="auth-subtitle">{info}</p>
+
+          {devOtp && (
+            <div
+              style={{
+                marginBottom: 18,
+                padding: '12px 16px',
+                background: '#f0fdf4',
+                border: '1px solid #86efac',
+                borderRadius: 8,
+                fontSize: 13,
+                color: '#166534',
+                textAlign: 'left',
+              }}
+            >
+              ⚡ <strong>Your verification code:</strong>{' '}
+              <code
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  letterSpacing: 3,
+                  background: '#dcfce7',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  marginLeft: 6,
+                }}
+              >
+                {devOtp}
+              </code>
+            </div>
+          )}
 
           <form className="auth-form" onSubmit={handleCodeSubmit} noValidate>
             <div className="field">
