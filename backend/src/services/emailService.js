@@ -7,16 +7,41 @@ const setTransporter = (transporter) => {
   customTransporter = transporter;
 };
 
-// True when real SMTP credentials are configured. When false (and no test
-// transporter has been injected) the login-OTP email is logged instead of sent
-// so the flow still works on a dev machine without an email provider.
+// True when real SMTP or HTTP email credentials are configured.
 const hasSmtpConfig = () =>
   Boolean(
-    process.env.EMAIL_USER ||
+    process.env.RESEND_API_KEY ||
+      process.env.EMAIL_USER ||
       process.env.SMTP_USER ||
       process.env.EMAIL_PASS ||
       process.env.SMTP_PASS
   );
+
+// Send via HTTPS API (Port 443) to bypass cloud firewall restrictions (e.g. Render free tier blocks ports 25, 465, 587)
+const sendViaHttpApi = async ({ to, subject, html, text }) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  const from = process.env.EMAIL_FROM || "Northbank Security <onboarding@resend.dev>";
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      html,
+      text,
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Resend API HTTP error: ${errText}`);
+  }
+  return await res.json();
+};
 
 const getTransporter = () => {
   if (customTransporter) {
@@ -104,6 +129,23 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
     return customTransporter.sendMail(mailOptions);
   }
 
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const httpResult = await sendViaHttpApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (httpResult) {
+        logger.info(`[PASSWORD RESET] Email delivered via Resend HTTP API to ${to}`);
+        return httpResult;
+      }
+    } catch (err) {
+      logger.error("Resend HTTP API failed: " + err.message);
+    }
+  }
+
   if (!hasSmtpConfig()) {
     logger.info(`[PASSWORD RESET] No SMTP configured on server. Direct reset link: ${resetUrl}`);
     return { messageId: "dev-password-reset-log", resetUrl };
@@ -122,6 +164,22 @@ const sendLoginOtpEmail = async ({ to, code }) => {
   if (customTransporter) {
     return customTransporter.sendMail(buildOtpMailOptions({ to, code }));
   }
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const opts = buildOtpMailOptions({ to, code });
+      const httpResult = await sendViaHttpApi({
+        to,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+      });
+      if (httpResult) return httpResult;
+    } catch (err) {
+      logger.error("Resend OTP delivery failed: " + err.message);
+    }
+  }
+
   if (!hasSmtpConfig()) {
     logger.info("Configure EMAIL_USER / EMAIL_PASS to send real sign-in codes via email.");
     return { messageId: "dev-otp-log", devCode: code };
