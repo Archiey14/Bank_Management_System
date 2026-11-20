@@ -32,15 +32,16 @@ const getTransporter = () => {
     host,
     port,
     secure: port === 465,
-    auth: {
-      user,
-      pass,
-    },
+    auth: user && pass ? { user, pass } : undefined,
+    connectionTimeout: 6000,
+    greetingTimeout: 6000,
+    socketTimeout: 10000,
   });
 };
 
 const sendPasswordResetEmail = async ({ to, resetUrl }) => {
-  const transporter = getTransporter();
+  logger.info(`[PASSWORD RESET] Password reset requested for ${to}`);
+
   const from =
     process.env.EMAIL_FROM ||
     `"Northbank Security" <${process.env.EMAIL_USER || process.env.SMTP_USER || "noreply@northbank.com"}>`;
@@ -89,8 +90,17 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
     `,
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  return info;
+  if (customTransporter) {
+    return customTransporter.sendMail(mailOptions);
+  }
+
+  if (!hasSmtpConfig()) {
+    logger.info(`[PASSWORD RESET] No SMTP configured on server. Direct reset link: ${resetUrl}`);
+    return { messageId: "dev-password-reset-log", resetUrl };
+  }
+
+  const transporter = getTransporter();
+  return transporter.sendMail(mailOptions);
 };
 
 // Email the 6-digit sign-in code for the second step of login.
@@ -343,5 +353,6 @@ module.exports = {
   sendCardApprovalEmail,
   sendCardRejectionEmail,
   setTransporter,
+  hasSmtpConfig,
 };
 

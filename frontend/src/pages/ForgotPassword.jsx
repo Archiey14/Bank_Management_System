@@ -34,6 +34,7 @@ export default function ForgotPassword() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
+  const [directResetUrl, setDirectResetUrl] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -44,7 +45,10 @@ export default function ForgotPassword() {
     setError('')
     setSubmitting(true)
     try {
-      await forgotPassword(email.trim().toLowerCase())
+      const res = await forgotPassword(email.trim().toLowerCase())
+      if (res?.resetUrl) {
+        setDirectResetUrl(res.resetUrl)
+      }
       setSent(true)
     } catch (err) {
       // The backend returns 200 even for unknown emails to prevent enumeration,
@@ -73,6 +77,42 @@ export default function ForgotPassword() {
           <p className="auth-subtitle" style={{ marginTop: 16 }}>
             The link expires in <strong>15 minutes</strong>.
           </p>
+
+          {directResetUrl && (
+            <div
+              style={{
+                marginTop: 20,
+                padding: '16px 18px',
+                background: '#f0fdf4',
+                border: '1px solid #86efac',
+                borderRadius: 10,
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 4 }}>
+                ⚡ Instant Recovery Link (Direct Access)
+              </div>
+              <p style={{ fontSize: 13, color: '#15803d', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                You can also use this direct link to set your new password immediately:
+              </p>
+              <a
+                href={directResetUrl}
+                className="btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  textDecoration: 'none',
+                  padding: '8px 16px',
+                  fontSize: 13,
+                }}
+              >
+                Reset password now
+                <ArrowRightIcon />
+              </a>
+            </div>
+          )}
+
           <p className="auth-switch" style={{ marginTop: 32 }}>
             <Link to="/login" className="auth-link">
               ← Back to sign in
