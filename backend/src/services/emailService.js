@@ -251,11 +251,11 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
         text: mailOptions.text,
       });
       if (brevoResult) {
-        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        logger.info(`[CARD APPROVAL] Email delivered via Brevo API to ${to}`);
         return brevoResult;
       }
     } catch (err) {
-      logger.error("Brevo API password reset delivery failed: " + err.message);
+      logger.error("Brevo API card approval delivery failed: " + err.message);
     }
   }
 
@@ -314,18 +314,19 @@ const sendLoginOtpEmail = async ({ to, code }) => {
 
   if (process.env.BREVO_API_KEY) {
     try {
+      const opts = buildOtpMailOptions({ to, code });
       const brevoResult = await sendViaBrevoApi({
         to,
-        subject: mailOptions.subject,
-        html: mailOptions.html,
-        text: mailOptions.text,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
       });
       if (brevoResult) {
-        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        logger.info(`[2FA OTP] Email delivered via Brevo API to ${to}`);
         return brevoResult;
       }
     } catch (err) {
-      logger.error("Brevo API password reset delivery failed: " + err.message);
+      logger.error("Brevo API OTP delivery failed: " + err.message);
     }
   }
 
@@ -441,11 +442,11 @@ const sendCardApprovalEmail = async ({ to, recipientName, cardType, last4, pin, 
         text: mailOptions.text,
       });
       if (brevoResult) {
-        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        logger.info(`[CARD APPROVAL] Email delivered via Brevo API to ${to}`);
         return brevoResult;
       }
     } catch (err) {
-      logger.error("Brevo API password reset delivery failed: " + err.message);
+      logger.error("Brevo API card approval delivery failed: " + err.message);
     }
   }
 
@@ -571,11 +572,11 @@ const sendCardRejectionEmail = async ({ to, recipientName, cardType, application
         text: mailOptions.text,
       });
       if (brevoResult) {
-        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        logger.info(`[CARD APPROVAL] Email delivered via Brevo API to ${to}`);
         return brevoResult;
       }
     } catch (err) {
-      logger.error("Brevo API password reset delivery failed: " + err.message);
+      logger.error("Brevo API card approval delivery failed: " + err.message);
     }
   }
 
