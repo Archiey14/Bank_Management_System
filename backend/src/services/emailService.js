@@ -10,13 +10,50 @@ const setTransporter = (transporter) => {
 // True when real SMTP or HTTP email credentials are configured.
 const hasSmtpConfig = () =>
   Boolean(
-    process.env.GMAIL_REFRESH_TOKEN ||
+    process.env.BREVO_API_KEY ||
+      process.env.GMAIL_REFRESH_TOKEN ||
       process.env.RESEND_API_KEY ||
       process.env.EMAIL_USER ||
       process.env.SMTP_USER ||
       process.env.EMAIL_PASS ||
       process.env.SMTP_PASS
   );
+
+// Send via Brevo (Sendinblue) HTTPS API (Port 443)
+// 100% Free (300 emails/day), zero domain verification needed, works to ANY real recipient worldwide
+const sendViaBrevoApi = async ({ to, subject, html, text }) => {
+  const apiKey = (process.env.BREVO_API_KEY || "").trim();
+  if (!apiKey) return null;
+  const senderEmail = (
+    process.env.BREVO_SENDER ||
+    process.env.EMAIL_USER ||
+    "archiey1404@gmail.com"
+  ).trim();
+
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: "Northbank Security", email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html || `<p>${text}</p>`,
+      textContent: text,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Brevo API error: ${errText}`);
+  }
+
+  const result = await res.json();
+  return { messageId: result.messageId, ...result };
+};
 
 // Send via official Google Gmail REST API over HTTPS (Port 443)
 // Bypasses cloud host firewall blocks (Render free tier blocks SMTP ports 25, 465, 587)
@@ -205,6 +242,23 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
     return customTransporter.sendMail(mailOptions);
   }
 
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const brevoResult = await sendViaBrevoApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (brevoResult) {
+        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        return brevoResult;
+      }
+    } catch (err) {
+      logger.error("Brevo API password reset delivery failed: " + err.message);
+    }
+  }
+
   if (process.env.GMAIL_REFRESH_TOKEN) {
     try {
       const gmailResult = await sendViaGmailApi({
@@ -256,6 +310,23 @@ const sendLoginOtpEmail = async ({ to, code }) => {
 
   if (customTransporter) {
     return customTransporter.sendMail(buildOtpMailOptions({ to, code }));
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const brevoResult = await sendViaBrevoApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (brevoResult) {
+        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        return brevoResult;
+      }
+    } catch (err) {
+      logger.error("Brevo API password reset delivery failed: " + err.message);
+    }
   }
 
   if (process.env.GMAIL_REFRESH_TOKEN) {
@@ -359,6 +430,23 @@ const sendCardApprovalEmail = async ({ to, recipientName, cardType, last4, pin, 
 
   if (customTransporter) {
     return customTransporter.sendMail(mailOptions);
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const brevoResult = await sendViaBrevoApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (brevoResult) {
+        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        return brevoResult;
+      }
+    } catch (err) {
+      logger.error("Brevo API password reset delivery failed: " + err.message);
+    }
   }
 
   if (process.env.GMAIL_REFRESH_TOKEN) {
@@ -472,6 +560,23 @@ const sendCardRejectionEmail = async ({ to, recipientName, cardType, application
 
   if (customTransporter) {
     return customTransporter.sendMail(mailOptions);
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const brevoResult = await sendViaBrevoApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (brevoResult) {
+        logger.info(`[PASSWORD RESET] Email delivered via Brevo API to ${to}`);
+        return brevoResult;
+      }
+    } catch (err) {
+      logger.error("Brevo API password reset delivery failed: " + err.message);
+    }
   }
 
   if (process.env.GMAIL_REFRESH_TOKEN) {
