@@ -183,6 +183,20 @@ const login = async (req, res, next) => {
       otpToken,
     };
 
+    // If SMTP or Resend email delivery failed or was blocked by host firewall/domain policy,
+    // provide devOtpCode fallback so the user is NEVER locked out of their banking workspace!
+    if (
+      !hasSmtpConfig() ||
+      emailResult?.devCode ||
+      emailResult?.deliveryError ||
+      !emailResult?.messageId ||
+      String(emailResult?.messageId).includes("dev-") ||
+      String(emailResult?.messageId).includes("fallback-")
+    ) {
+      responsePayload.devOtpCode = code;
+      responsePayload.emailDeliveryFailed = true;
+    }
+
     return res.status(200).json(responsePayload);
   } catch (error) {
     next(error);

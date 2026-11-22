@@ -10,12 +10,87 @@ const setTransporter = (transporter) => {
 // True when real SMTP or HTTP email credentials are configured.
 const hasSmtpConfig = () =>
   Boolean(
-    process.env.RESEND_API_KEY ||
+    process.env.GMAIL_REFRESH_TOKEN ||
+      process.env.RESEND_API_KEY ||
       process.env.EMAIL_USER ||
       process.env.SMTP_USER ||
       process.env.EMAIL_PASS ||
       process.env.SMTP_PASS
   );
+
+// Send via official Google Gmail REST API over HTTPS (Port 443)
+// Bypasses cloud host firewall blocks (Render free tier blocks SMTP ports 25, 465, 587)
+// Sends from your verified personal/workspace Gmail directly to ANY user worldwide without domain restrictions.
+const sendViaGmailApi = async ({ to, subject, html, text }) => {
+  const clientId = (process.env.GMAIL_CLIENT_ID || "").trim();
+  const clientSecret = (process.env.GMAIL_CLIENT_SECRET || "").trim();
+  const refreshToken = (process.env.GMAIL_REFRESH_TOKEN || "").trim();
+  const userEmail = (process.env.EMAIL_USER || "archiey1404@gmail.com").trim();
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  // 1. Refresh OAuth2 access token via HTTPS (Port 443)
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    const errText = await tokenRes.text();
+    throw new Error(`Gmail OAuth token refresh failed: ${errText}`);
+  }
+
+  const { access_token } = await tokenRes.json();
+
+  // 2. Build RFC 2822 email
+  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString("base64")}?=`;
+  const messageParts = [
+    `From: "Northbank Security" <${userEmail}>`,
+    `To: ${to}`,
+    `Subject: ${utf8Subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    Buffer.from(html || text).toString("base64"),
+  ];
+  const message = messageParts.join("\r\n");
+
+  const encodedMessage = Buffer.from(message)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  // 3. Send message via Gmail REST API
+  const sendRes = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ raw: encodedMessage }),
+    }
+  );
+
+  if (!sendRes.ok) {
+    const errText = await sendRes.text();
+    throw new Error(`Gmail API send failed: ${errText}`);
+  }
+
+  const result = await sendRes.json();
+  return { messageId: result.id, ...result };
+};
 
 // Send via HTTPS API (Port 443) to bypass cloud firewall restrictions (e.g. Render free tier blocks ports 25, 465, 587)
 const sendViaHttpApi = async ({ to, subject, html, text }) => {
@@ -130,6 +205,23 @@ const sendPasswordResetEmail = async ({ to, resetUrl }) => {
     return customTransporter.sendMail(mailOptions);
   }
 
+  if (process.env.GMAIL_REFRESH_TOKEN) {
+    try {
+      const gmailResult = await sendViaGmailApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (gmailResult) {
+        logger.info(`[PASSWORD RESET] Email delivered via Gmail REST API to ${to}`);
+        return gmailResult;
+      }
+    } catch (err) {
+      logger.error("Gmail REST API password reset delivery failed: " + err.message);
+    }
+  }
+
   if (process.env.RESEND_API_KEY) {
     try {
       const httpResult = await sendViaHttpApi({
@@ -164,6 +256,24 @@ const sendLoginOtpEmail = async ({ to, code }) => {
 
   if (customTransporter) {
     return customTransporter.sendMail(buildOtpMailOptions({ to, code }));
+  }
+
+  if (process.env.GMAIL_REFRESH_TOKEN) {
+    try {
+      const opts = buildOtpMailOptions({ to, code });
+      const gmailResult = await sendViaGmailApi({
+        to,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+      });
+      if (gmailResult) {
+        logger.info(`[2FA OTP] Email delivered via Gmail REST API to ${to}`);
+        return gmailResult;
+      }
+    } catch (err) {
+      logger.error("Gmail REST API OTP delivery failed: " + err.message);
+    }
   }
 
   if (process.env.RESEND_API_KEY) {
@@ -250,6 +360,24 @@ const sendCardApprovalEmail = async ({ to, recipientName, cardType, last4, pin, 
   if (customTransporter) {
     return customTransporter.sendMail(mailOptions);
   }
+
+  if (process.env.GMAIL_REFRESH_TOKEN) {
+    try {
+      const gmailResult = await sendViaGmailApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (gmailResult) {
+        logger.info(`[CARD APPROVAL] Email delivered via Gmail REST API to ${to}`);
+        return gmailResult;
+      }
+    } catch (err) {
+      logger.error("Gmail REST API card approval delivery failed: " + err.message);
+    }
+  }
+
   if (!hasSmtpConfig()) {
     logger.info("Configure EMAIL_USER / EMAIL_PASS to send card approval emails via SMTP.");
     return { messageId: "dev-card-approval-log", devPin: pin };
@@ -345,6 +473,24 @@ const sendCardRejectionEmail = async ({ to, recipientName, cardType, application
   if (customTransporter) {
     return customTransporter.sendMail(mailOptions);
   }
+
+  if (process.env.GMAIL_REFRESH_TOKEN) {
+    try {
+      const gmailResult = await sendViaGmailApi({
+        to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+      if (gmailResult) {
+        logger.info(`[CARD APPROVAL] Email delivered via Gmail REST API to ${to}`);
+        return gmailResult;
+      }
+    } catch (err) {
+      logger.error("Gmail REST API card approval delivery failed: " + err.message);
+    }
+  }
+
   if (!hasSmtpConfig()) {
     logger.info("Configure EMAIL_USER / EMAIL_PASS to send card rejection emails via SMTP.");
     return { messageId: "dev-card-rejection-log", devRemarks: remarks };
