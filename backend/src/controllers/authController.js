@@ -351,7 +351,7 @@ const forgotPassword = async (req, res, next) => {
       try {
         const parsed = new URL(origin);
         clientUrl = parsed.origin;
-      } catch {}
+      } catch { }
     } else if (process.env.CLIENT_URL && !process.env.CLIENT_URL.includes("localhost")) {
       clientUrl = process.env.CLIENT_URL;
     }
